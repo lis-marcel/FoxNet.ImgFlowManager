@@ -1,8 +1,14 @@
 {
   "version": 2,
-  "dgSpecHash": "W7qZLR7cVG3tcq4TxrxIHBJ/97zooZFUiVG3C61f6AGMtsiP+TjbgzTyeDbid0kjFNWFLJ8sJ3VB5iG/4dawJA==",
+  "dgSpecHash": "TQXnpBXdHHwsZTQnHg9BbIO2HmNF6/DleoQL8F1GR/HeeVAdI9hUcuBfgstoQKEJ/CZNuNqSwaISmU2hvbcKUg==",
   "success": true,
   "projectFilePath": "C:\\Users\\lisma\\.FoxNet\\FoxSky.Img\\FoxSky.Img\\FoxSky.Img.csproj",
-  "expectedPackageFiles": [],
+  "expectedPackageFiles": [
+    "C:\\Users\\lisma\\.nuget\\packages\\metadataextractor\\2.7.2\\metadataextractor.2.7.2.nupkg.sha512",
+    "C:\\Users\\lisma\\.nuget\\packages\\microsoft.netcore.platforms\\2.1.2\\microsoft.netcore.platforms.2.1.2.nupkg.sha512",
+    "C:\\Users\\lisma\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\4.5.2\\system.runtime.compilerservices.unsafe.4.5.2.nupkg.sha512",
+    "C:\\Users\\lisma\\.nuget\\packages\\system.text.encoding.codepages\\4.5.1\\system.text.encoding.codepages.4.5.1.nupkg.sha512",
+    "C:\\Users\\lisma\\.nuget\\packages\\xmpcore\\6.1.10.1\\xmpcore.6.1.10.1.nupkg.sha512"
+  ],
   "logs": []
 }
