@@ -45,7 +45,7 @@ namespace FoxSky.Img
         public void ProcessDirectory(string targetDirectory)
         {
             //Process found files
-            var files = System.IO.Directory.EnumerateFiles(targetDirectory, "*.jpg");
+            var files = System.IO.Directory.EnumerateFiles(targetDirectory, "*.jpg", SearchOption.AllDirectories);
             
             foreach (var fileName in files)
             {
