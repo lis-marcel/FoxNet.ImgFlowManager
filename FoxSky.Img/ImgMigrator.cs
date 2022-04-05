@@ -101,20 +101,23 @@ namespace FoxSky.Img
 
         private bool SameBinaryContent(string fileName1, string fileName2)
         {
-            byte[] file1 = File.ReadAllBytes(fileName1);
-            byte[] file2 = File.ReadAllBytes(fileName2);
+            int file1byte = 0;
+            int file2byte = 0;
 
-            if (file1.Length == file2.Length)
+            using (FileStream fileStream1 = new FileStream(fileName1, FileMode.Open),
+                fileStream2 = new FileStream(fileName2, FileMode.Open))
             {
-                for (int i = 0; i < file1.Length; i++)
+                do
                 {
-                    if (file1[i] != file2[i]) return false;
+                    file1byte = fileStream1.ReadByte();
+                    file2byte =  fileStream2.ReadByte();
                 }
+                while (file1byte == file2byte&& file1byte != -1);
 
                 return true;
             }
 
-            return false;
+            return false; 
         }
         
         private DateTime? ExtractPhotoDateFromExif(string fileName)
