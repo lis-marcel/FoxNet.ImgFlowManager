@@ -48,7 +48,7 @@ namespace FoxSky.Img
                         break;
                     
                     default:
-                        throw new ArgumentException($"Unspported mode {Mode}");
+                        throw new ArgumentException($"Unsupported mode {Mode}");
                 }
 
                 Log($"{fileName} → {dstFileName}");
@@ -141,7 +141,7 @@ namespace FoxSky.Img
         {
             return !File.Exists(dstFileName) ||
                 new FileInfo(srcFileName).Length != new FileInfo(dstFileName).Length ||
-                SameBinaryContent(srcFileName, dstFileName);
+                !SameBinaryContent(srcFileName, dstFileName);
         }
 
         private bool SameBinaryContent(string fileName1, string fileName2)
@@ -191,11 +191,18 @@ namespace FoxSky.Img
         }
         public static void LogError(string message)
         {
-            Console.Write($"[{DateTime.Now}]");
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.Write("Success!");
-            Console.Write($"{message}");
-            Debug.WriteLine(message);
+            try
+            {
+                Console.Write($"[{DateTime.Now}]");
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.Write("Error!");
+                Console.Write($"{message}");
+                Debug.WriteLine(message);
+            }
+            finally
+            {
+                Console.ResetColor();
+            }
         }
 
         #endregion

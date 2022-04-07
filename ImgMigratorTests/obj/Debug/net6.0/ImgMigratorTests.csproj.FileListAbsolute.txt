@@ -110,3 +110,4 @@ C:\Users\lisma\.FoxNet\FoxSky.Img\ImgMigratorTests\bin\Debug\net6.0\Input\Lis_20
 C:\Users\lisma\.FoxNet\FoxSky.Img\ImgMigratorTests\bin\Debug\net6.0\Input\Lis_2019-02-18 04-10-29.jpg
 C:\Users\lisma\.FoxNet\FoxSky.Img\ImgMigratorTests\bin\Debug\net6.0\Input\Lis_2019-02-18 04-10-36.jpg
 C:\Users\lisma\.FoxNet\FoxSky.Img\ImgMigratorTests\bin\Debug\net6.0\Input\Lis_2019-02-18 04-10-54.jpg
+C:\Users\lisma\.FoxNet\FoxSky.Img\ImgMigratorTests\bin\Debug\net6.0\Input\compare\file1_plus_one_byte.jpg
