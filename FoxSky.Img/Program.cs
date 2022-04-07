@@ -5,11 +5,18 @@ class Program
 {
     static void Main(string[] args)
     {
-        var srcPath = @"C:\temp\imgMigrator\src";
-        var dstPath = @"C:\temp\imgMigrator\dst";
+        var resSuccess = false;
 
-        var imgMigrator = new ImgMigrator() { SrcPath = srcPath, DstRootPath = dstPath};
+        if (args.Length < 2)
+        {
+            ImgMigrator.LogError("Invalid params.");
+        }
+        else
+        {
+            var imgMigrator = new ImgMigrator() { SrcPath = args[0], DstRootPath = args[1] };
+            resSuccess = imgMigrator.ProcessImages();
+        }
 
-        imgMigrator.GetFilesFromSrc(srcPath);
+        Environment.ExitCode = resSuccess ? 0 : 1;
     }
 }

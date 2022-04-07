@@ -4,11 +4,8 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 17.1.32210.238
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FoxSky.Img", "FoxSky.Img\FoxSky.Img.csproj", "{114900D8-3DB1-4F74-B3DB-CB40D08568C6}"
-	ProjectSection(ProjectDependencies) = postProject
-		{AD6F0A38-228B-4352-810E-7A3D30B141CA} = {AD6F0A38-228B-4352-810E-7A3D30B141CA}
-	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FoxSky.Img.Test", "FoxSky.Img.Test\FoxSky.Img.Test.csproj", "{AD6F0A38-228B-4352-810E-7A3D30B141CA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImgMigratorTests", "ImgMigratorTests\ImgMigratorTests.csproj", "{DFBB2E13-FB87-4CB4-A597-7DB48F6E26BE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -20,10 +17,10 @@ Global
 		{114900D8-3DB1-4F74-B3DB-CB40D08568C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{114900D8-3DB1-4F74-B3DB-CB40D08568C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{114900D8-3DB1-4F74-B3DB-CB40D08568C6}.Release|Any CPU.Build.0 = Release|Any CPU
-		{AD6F0A38-228B-4352-810E-7A3D30B141CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{AD6F0A38-228B-4352-810E-7A3D30B141CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{AD6F0A38-228B-4352-810E-7A3D30B141CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{AD6F0A38-228B-4352-810E-7A3D30B141CA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DFBB2E13-FB87-4CB4-A597-7DB48F6E26BE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DFBB2E13-FB87-4CB4-A597-7DB48F6E26BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DFBB2E13-FB87-4CB4-A597-7DB48F6E26BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DFBB2E13-FB87-4CB4-A597-7DB48F6E26BE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

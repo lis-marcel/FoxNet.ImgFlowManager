@@ -1,56 +1,101 @@
-﻿using System;
-using System.IO;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using MetadataExtractor;
+﻿using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
+using System.Diagnostics;
 
 namespace FoxSky.Img
 {
+    public enum Mode { Move, Copy }
+
     public class ImgMigrator
     {
         #region Properties
         public string? SrcPath { get; set; }
         public string? DstRootPath { get; set; }
-        public string? Prefix { get; set; }
+        public Mode Mode { get; set; }
         #endregion
-
         
         #region Public methods
-        public void GetFilesFromSrc(string srcPath)
+        public bool ProcessImages()
         {
-            var strPath = srcPath.ToString();
-            
-            if (File.Exists(strPath)) 
-                ProcessFile(strPath);
-            else if (System.IO.Directory.Exists(strPath)) 
-                ProcessDirectory(strPath);
-            else 
-                Console.WriteLine("{0} is not a valid file or directory.", srcPath);
+            bool res = false;
+
+            if (File.Exists(SrcPath)) 
+                res = ProcessImageFile(SrcPath);
+            else if (System.IO.Directory.Exists(SrcPath)) 
+                res = ProcessDirectory(SrcPath);
+            else
+                LogError($"{SrcPath} is not a valid file or directory.");
+
+            return res;
         }
 
-        public void ProcessFile(string fileName)
+        public bool ProcessImageFile(string fileName)
         {
-            var photoDate = ExtractPhotoDateFromExif(fileName);
-            var dstPath = PrepareDstDir(photoDate);
-            var dstFileName = PrepareNewFileName(fileName, dstPath, photoDate);
+            try
+            {
+                var photoDate = ExtractPhotoDateFromExif(fileName);
+                var dstPath = PrepareDstDir(photoDate);
+                var dstFileName = PrepareNewFileName(fileName, dstPath, photoDate);
 
-            File.Move(fileName, dstFileName, true);
+                switch (Mode)
+                {
+                    case Mode.Move:
+                        File.Move(fileName, dstFileName, true);
+                        break;
 
-            Console.WriteLine("Processed file '{0}'.", fileName);
+                    case Mode.Copy:
+                        File.Copy(fileName, dstFileName, true);
+                        break;
+                    
+                    default:
+                        throw new ArgumentException($"Unspported mode {Mode}");
+                }
+
+                Log($"{fileName} → {dstFileName}");
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogError($"During processing {fileName} an error occured: {ex.Message}");
+
+                return false;
+            }
         }
-
-        public void ProcessDirectory(string targetDirectory)
+        public bool ProcessDirectory(string targetDirectory)
         {
             //Process found files
-            var files = System.IO.Directory.EnumerateFiles(targetDirectory, "*.jpg", SearchOption.AllDirectories);
-            
+            var files = System.IO.Directory.EnumerateFiles(targetDirectory, "*.jpg", SearchOption.AllDirectories)
+                .Union(System.IO.Directory.EnumerateFiles(targetDirectory, "*.jpeg", SearchOption.AllDirectories));
+
+            var filesCount = files.Count();
+            int processed = 0;
+            Log($"Found {filesCount} images.");
+
             foreach (var fileName in files)
             {
-                ProcessFile(fileName);
+                if (ProcessImageFile(fileName))
+                {
+                    processed++;
+                }
             }
+
+            var success = processed == filesCount;
+
+            if (filesCount == 0 )
+            {
+                Log("Nothing to do. No images found.");
+            }
+            else if (success)
+            {
+                Log($"All {filesCount} files processed succesfully.");
+            }
+            else 
+            {
+                LogError($"{filesCount - processed} of {filesCount} could not be processed.");
+            }
+
+            return success;
         }
         #endregion
 
@@ -101,25 +146,32 @@ namespace FoxSky.Img
 
         private bool SameBinaryContent(string fileName1, string fileName2)
         {
-            int file1byte = 0;
-            int file2byte = 0;
+            int file1byte;
+            int file2byte;
 
             using (FileStream fileStream1 = new FileStream(fileName1, FileMode.Open),
                 fileStream2 = new FileStream(fileName2, FileMode.Open))
             {
-                do
+                while (true)
                 {
                     file1byte = fileStream1.ReadByte();
-                    file2byte =  fileStream2.ReadByte();
-                }
-                while (file1byte == file2byte&& file1byte != -1);
+                    file2byte = fileStream2.ReadByte();
 
-                return true;
+                    if (file1byte != file2byte)
+                    {
+                        return false;
+                    }
+
+                    if (file1byte == file2byte && file1byte == -1)
+                    {
+                        break;
+                    }
+                }
             }
 
-            return false; 
+            return true;
         }
-        
+
         private DateTime? ExtractPhotoDateFromExif(string fileName)
         {
             DateTime dateTime;
@@ -128,7 +180,22 @@ namespace FoxSky.Img
                 .OfType<ExifSubIfdDirectory>()?
                 .FirstOrDefault()?
                 .TryGetDateTime(ExifDirectoryBase.TagDateTimeOriginal, out dateTime) == true ? dateTime : null;
+        }
 
+        public static void Log(string message)
+        {
+            Console.Write($"[{DateTime.Now}]");
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.Write("Success!");
+            Console.Write($"{message}");
+        }
+        public static void LogError(string message)
+        {
+            Console.Write($"[{DateTime.Now}]");
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.Write("Success!");
+            Console.Write($"{message}");
+            Debug.WriteLine(message);
         }
 
         #endregion
