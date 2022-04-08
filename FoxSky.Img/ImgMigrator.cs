@@ -184,10 +184,19 @@ namespace FoxSky.Img
 
         public static void Log(string message)
         {
-            Console.Write($"[{DateTime.Now}]");
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.Write("Success!");
-            Console.Write($"{message}");
+            try
+            {
+                Console.Write($"[{DateTime.Now}]");
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.Write("Success! ");
+                Console.Write($"{message}");
+                Debug.WriteLine(message);
+                Console.WriteLine();
+            }
+            finally
+            {
+                Console.ResetColor();
+            }
         }
         public static void LogError(string message)
         {
@@ -195,9 +204,10 @@ namespace FoxSky.Img
             {
                 Console.Write($"[{DateTime.Now}]");
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.Write("Error!");
+                Console.Write("Error! ");
                 Console.Write($"{message}");
                 Debug.WriteLine(message);
+                Console.WriteLine();
             }
             finally
             {
