@@ -2,7 +2,7 @@
   "profiles": {
     "FoxSky.Img": {
       "commandName": "Project",
-      "commandLineArgs": "c:\\temp\\imgMigrator\\src c:\\temp\\imgMigrator\\dst"
+      "commandLineArgs": "c:\\temp\\ika_src c:\\temp\\ika"
     }
   }
 }

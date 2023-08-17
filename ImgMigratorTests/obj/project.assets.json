@@ -6372,24 +6372,19 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\lisma\\.nuget\\packages\\": {},
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+    "C:\\Users\\lisma\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\lisma\\.FoxNet\\FoxSky.Img\\ImgMigratorTests\\ImgMigratorTests.csproj",
+      "projectUniqueName": "C:\\Users\\lisma\\source\\repos\\FoxSky.Img_\\ImgMigratorTests\\ImgMigratorTests.csproj",
       "projectName": "ImgMigratorTests",
-      "projectPath": "C:\\Users\\lisma\\.FoxNet\\FoxSky.Img\\ImgMigratorTests\\ImgMigratorTests.csproj",
+      "projectPath": "C:\\Users\\lisma\\source\\repos\\FoxSky.Img_\\ImgMigratorTests\\ImgMigratorTests.csproj",
       "packagesPath": "C:\\Users\\lisma\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\lisma\\.FoxNet\\FoxSky.Img\\ImgMigratorTests\\obj\\",
+      "outputPath": "C:\\Users\\lisma\\source\\repos\\FoxSky.Img_\\ImgMigratorTests\\obj\\",
       "projectStyle": "PackageReference",
-      "fallbackFolders": [
-        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-      ],
       "configFilePaths": [
         "C:\\Users\\lisma\\AppData\\Roaming\\NuGet\\NuGet.Config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
@@ -6403,8 +6398,8 @@
         "net6.0": {
           "targetAlias": "net6.0",
           "projectReferences": {
-            "C:\\Users\\lisma\\.FoxNet\\FoxSky.Img\\FoxSky.Img\\FoxSky.Img.csproj": {
-              "projectPath": "C:\\Users\\lisma\\.FoxNet\\FoxSky.Img\\FoxSky.Img\\FoxSky.Img.csproj"
+            "C:\\Users\\lisma\\source\\repos\\FoxSky.Img_\\FoxSky.Img\\FoxSky.Img.csproj": {
+              "projectPath": "C:\\Users\\lisma\\source\\repos\\FoxSky.Img_\\FoxSky.Img\\FoxSky.Img.csproj"
             }
           }
         }
@@ -6446,12 +6441,18 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
+        "downloadDependencies": [
+          {
+            "name": "Microsoft.WindowsDesktop.App.Ref",
+            "version": "[6.0.20, 6.0.20]"
+          }
+        ],
         "frameworkReferences": {
           "Microsoft.NETCore.App": {
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.200\\RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.120\\RuntimeIdentifierGraph.json"
       }
     }
   }

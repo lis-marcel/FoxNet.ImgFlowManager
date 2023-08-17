@@ -116,9 +116,9 @@ namespace FoxSky.Img
 
         private string PrepareNewFileName(string srcFileName, string dstPath, DateTime? photoDate)
         {
-            var fileName = photoDate.HasValue ?
-                photoDate.Value.ToString("yyyyMMdd_HHmmss") :
-                Path.GetFileNameWithoutExtension(srcFileName);
+            var fileName = "Lis_" + (photoDate.HasValue ?
+                photoDate.Value.ToString("yyyy-MM-dd HH-mm-ss") :
+                Path.GetFileNameWithoutExtension(srcFileName));
 
             var extension = Path.GetExtension(srcFileName).Trim();
             var newFileName = Path.Combine(dstPath, fileName) + extension;
