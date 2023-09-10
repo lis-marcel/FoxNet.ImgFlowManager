@@ -1,6 +1,10 @@
 ﻿using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
 using System.Diagnostics;
+using GoogleApi.Entities.Maps.Geocoding.Location.Request;
+using System.Globalization;
+using System.Text;
+using GoogleApi.Entities.Common;
 
 namespace FoxSky.Img
 {
@@ -9,8 +13,13 @@ namespace FoxSky.Img
     public class ImgMigrator
     {
         #region Properties
+        public string? PicsOwnerSurname { get; set; }
         public string? SrcPath { get; set; }
         public string? DstRootPath { get; set; }
+        public string ApiKey 
+        { 
+            get => "AIzaSyDbtz3cT0yNRkXbr1oqwf3jSNoxzta1INc"; 
+        }
         public Mode Mode { get; set; }
         #endregion
         
@@ -28,7 +37,6 @@ namespace FoxSky.Img
 
             return res;
         }
-
         public bool ProcessImageFile(string fileName)
         {
             try
@@ -51,7 +59,7 @@ namespace FoxSky.Img
                         throw new ArgumentException($"Unsupported mode {Mode}");
                 }
 
-                Log($"{fileName} → {dstFileName}");
+                LogSuccess($"{fileName} → {dstFileName}");
 
                 return true;
             }
@@ -70,7 +78,7 @@ namespace FoxSky.Img
 
             var filesCount = files.Count();
             int processed = 0;
-            Log($"Found {filesCount} images.");
+            LogSuccess($"Found {filesCount} images.");
 
             foreach (var fileName in files)
             {
@@ -84,11 +92,11 @@ namespace FoxSky.Img
 
             if (filesCount == 0 )
             {
-                Log("Nothing to do. No images found.");
+                LogSuccess("Nothing to do. No images found.");
             }
             else if (success)
             {
-                Log($"All {filesCount} files processed succesfully.");
+                LogSuccess($"All {filesCount} files processed succesfully.");
             }
             else 
             {
@@ -113,11 +121,12 @@ namespace FoxSky.Img
 
             return dstRoot;
         }
-
         private string PrepareNewFileName(string srcFileName, string dstPath, DateTime? photoDate)
         {
-            var fileName = "Lis_" + (photoDate.HasValue ?
-                photoDate.Value.ToString("yyyy-MM-dd HH-mm-ss") :
+            var country = ReverseGeolocationRequestTask(srcFileName).Result;
+
+            var fileName = PicsOwnerSurname + (photoDate.HasValue ?
+                photoDate.Value.ToString("yyyy-MM-dd HH-mm-ss") + country :
                 Path.GetFileNameWithoutExtension(srcFileName));
 
             var extension = Path.GetExtension(srcFileName).Trim();
@@ -136,14 +145,115 @@ namespace FoxSky.Img
             
             return newFileName;
         }
+        private async Task<string> ReverseGeolocationRequestTask(string imagePath)
+        {
+            var location = CreateLocation(imagePath);
 
+            if (location != null)
+            {
+                LocationGeocodeRequest locationGeocodeRequest = new()
+                {
+                    Key = ApiKey,
+                    Location = CreateLocation(imagePath)
+                };
+                string city = "",
+                    country = "";
+
+                var stringBuilder = new StringBuilder();
+
+                var res = await GoogleApi.GoogleMaps.Geocode.LocationGeocode.QueryAsync(locationGeocodeRequest);
+
+                if (res.Status == GoogleApi.Entities.Common.Enums.Status.Ok)
+                {
+                    foreach (var result in res.Results)
+                    {
+                        foreach (var addressComponent in result.AddressComponents)
+                        {
+                            foreach (var type in addressComponent.Types)
+                            {
+                                if (type.ToString() == "Locality")
+                                {
+                                    city = ReplaceSpecialCharacters(addressComponent.LongName);
+                                }
+                                else if (type.ToString() == "Country")
+                                {
+                                    country = ReplaceSpecialCharacters(addressComponent.LongName);
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"Could not get resutls, Status: {res.Status}");
+                }
+
+                stringBuilder.Append(city);
+                stringBuilder.Append(country);
+
+                return stringBuilder.ToString();
+            }
+
+            else return "";
+        }
+        static string ReplaceSpecialCharacters(string input)
+        {
+            Dictionary<char, char> characterReplacements = new()
+            {
+                {'Ł', 'L'},
+                {'ł', 'l'}
+            };
+
+            StringBuilder result = new StringBuilder(input.Length);
+
+            foreach (char c in input)
+            {
+                if (characterReplacements.TryGetValue(c, out char replacement))
+                {
+                    result.Append(replacement);
+                }
+                else
+                {
+                    string normalized = c.ToString().Normalize(NormalizationForm.FormD);
+
+                    foreach (char ch in normalized)
+                    {
+                        if (CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark)
+                        {
+                            result.Append(ch);
+                        }
+                    }
+                }
+            }
+
+            return result.ToString();
+        }
+        private static Coordinate? CreateLocation(string imgPath)
+        {
+            var gps = ImageMetadataReader.ReadMetadata(imgPath)?
+                .OfType<GpsDirectory>()?
+                .FirstOrDefault();
+
+            if (gps != null)
+            {
+                var location = gps?.GetGeoLocation();
+
+                double lat = location.Latitude;
+                double lon = location.Longitude;
+
+                Coordinate coordinate = new(lat, lon);
+
+                return coordinate;
+            }
+
+            else return null;
+        }
         private bool CheckFileDiffers(string srcFileName, string dstFileName)
         {
             return !File.Exists(dstFileName) ||
                 new FileInfo(srcFileName).Length != new FileInfo(dstFileName).Length ||
                 !SameBinaryContent(srcFileName, dstFileName);
         }
-
         private bool SameBinaryContent(string fileName1, string fileName2)
         {
             int file1byte;
@@ -171,7 +281,6 @@ namespace FoxSky.Img
 
             return true;
         }
-
         private DateTime? ExtractPhotoDateFromExif(string fileName)
         {
             DateTime dateTime;
@@ -181,8 +290,7 @@ namespace FoxSky.Img
                 .FirstOrDefault()?
                 .TryGetDateTime(ExifDirectoryBase.TagDateTimeOriginal, out dateTime) == true ? dateTime : null;
         }
-
-        public static void Log(string message)
+        public static void LogSuccess(string message)
         {
             try
             {

@@ -2,7 +2,7 @@
   "profiles": {
     "FoxSky.Img": {
       "commandName": "Project",
-      "commandLineArgs": "c:\\temp\\ika_src c:\\temp\\ika"
+      "commandLineArgs": "Lis C:\\_Projects\\FoxNet.ImgFlowManager\\FoxSky.Img\\pics C:\\_Projects\\FoxNet.ImgFlowManager\\FoxSky.Img\\results"
     }
   }
 }

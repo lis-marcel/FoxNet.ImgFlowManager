@@ -7,13 +7,13 @@ class Program
     {
         var resSuccess = false;
 
-        if (args.Length < 2)
+        if (args.Length < 3)
         {
             ImgMigrator.LogError("Invalid params.");
         }
         else
         {
-            var imgMigrator = new ImgMigrator() { SrcPath = args[0], DstRootPath = args[1] };
+            var imgMigrator = new ImgMigrator() { PicsOwnerSurname = args[0], SrcPath = args[1], DstRootPath = args[2] };
             resSuccess = imgMigrator.ProcessImages();
         }
 
