@@ -5,6 +5,7 @@ using GoogleApi.Entities.Maps.Geocoding.Location.Request;
 using System.Globalization;
 using System.Text;
 using GoogleApi.Entities.Common;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace FoxSky.Img
 {
@@ -129,8 +130,10 @@ namespace FoxSky.Img
                 photoDate.Value.ToString("yyyy-MM-dd HH-mm-ss") + country :
                 Path.GetFileNameWithoutExtension(srcFileName));
 
+            var processedFileName = RemoveTextSpaces(fileName);
+
             var extension = Path.GetExtension(srcFileName).Trim();
-            var newFileName = Path.Combine(dstPath, fileName) + extension;
+            var newFileName = Path.Combine(dstPath, processedFileName) + extension;
             int i = 1;
 
             while (File.Exists(newFileName))
@@ -227,6 +230,13 @@ namespace FoxSky.Img
             }
 
             return result.ToString();
+        }
+        static string RemoveTextSpaces(string fileName)
+        {
+            var words = fileName.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            var processedFileName = string.Join("", words);
+
+            return processedFileName;
         }
         private static Coordinate? CreateLocation(string imgPath)
         {
