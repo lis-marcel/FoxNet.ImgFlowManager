@@ -305,8 +305,9 @@ namespace FoxSky.Img
             try
             {
                 Console.Write($"[{DateTime.Now}]");
-                Console.ForegroundColor = ConsoleColor.Green;
+                Console.Write($"{"\u001b[32m"}");
                 Console.Write("Success! ");
+                Console.Write($"{"\u001b[0m"}");
                 Console.Write($"{message}");
                 Debug.WriteLine(message);
                 Console.WriteLine();
@@ -321,8 +322,9 @@ namespace FoxSky.Img
             try
             {
                 Console.Write($"[{DateTime.Now}]");
-                Console.ForegroundColor = ConsoleColor.Red;
+                Console.Write($"{"\u001b[31m"}");
                 Console.Write("Error! ");
+                Console.Write($"{"\u001b[0m"}");
                 Console.Write($"{message}");
                 Debug.WriteLine(message);
                 Console.WriteLine();
