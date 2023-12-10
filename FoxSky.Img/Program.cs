@@ -1,5 +1,4 @@
 ﻿using FoxSky.Img;
-using System;
 
 class Program
 {

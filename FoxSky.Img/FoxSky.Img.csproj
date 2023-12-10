@@ -8,10 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="ExifLib" Version="1.7.0" />
     <PackageReference Include="Geocoding.Google" Version="4.0.1" />
     <PackageReference Include="Google.Api.Gax" Version="4.4.0" />
     <PackageReference Include="Google.Maps.Client" Version="2.1.2.159" />
-    <PackageReference Include="GoogleApi" Version="5.2.0" />
+    <PackageReference Include="GoogleApi" Version="5.2.4" />
     <PackageReference Include="GoogleMapsApi" Version="1.2.1" />
     <PackageReference Include="MetadataExtractor" Version="2.8.1" />
     <PackageReference Include="Wibci.CountryReverseGeocode" Version="2.1.0" />

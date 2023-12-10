@@ -1,15 +1,16 @@
-﻿using MetadataExtractor;
-using MetadataExtractor.Formats.Exif;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using GoogleApi.Entities.Maps.Geocoding.Location.Request;
 using System.Globalization;
 using System.Text;
 using GoogleApi.Entities.Common;
+using ExifLib;
 using static System.Net.Mime.MediaTypeNames;
+using GoogleApi.Entities.Search.Common.Enums;
+using MetadataExtractor;
 
 namespace FoxSky.Img
 {
-    public enum Mode { Move, Copy }
+    public enum Mode { Copy, Move }
 
     public class ImgMigrator
     {
@@ -19,7 +20,7 @@ namespace FoxSky.Img
         public string? DstRootPath { get; set; }
         public string ApiKey 
         { 
-            get => "AIzaSyDbtz3cT0yNRkXbr1oqwf3jSNoxzta1INc"; 
+            get => "AIzaSyD_cpKBl4fKo8ASfe0ubQYHhRWbX_IpoSU"; 
         }
         public Mode Mode { get; set; }
         #endregion
@@ -38,35 +39,35 @@ namespace FoxSky.Img
 
             return res;
         }
-        public bool ProcessImageFile(string fileName)
+        public bool ProcessImageFile(string imgName)
         {
             try
             {
-                var photoDate = ExtractPhotoDateFromExif(fileName);
+                var photoDate = ExtractPhotoDateFromExif(imgName);
                 var dstPath = PrepareDstDir(photoDate);
-                var dstFileName = PrepareNewFileName(fileName, dstPath, photoDate);
+                var dstFileName = PrepareNewFileName(imgName, dstPath, photoDate);
 
                 switch (Mode)
                 {
                     case Mode.Move:
-                        File.Move(fileName, dstFileName, true);
+                        File.Move(imgName, dstFileName, true);
                         break;
 
                     case Mode.Copy:
-                        File.Copy(fileName, dstFileName, true);
+                        File.Copy(imgName, dstFileName, true);
                         break;
                     
                     default:
                         throw new ArgumentException($"Unsupported mode {Mode}");
                 }
 
-                LogSuccess($"{fileName} → {dstFileName}");
+                LogSuccess($"{imgName} → {dstFileName}");
 
                 return true;
             }
             catch (Exception ex)
             {
-                LogError($"During processing {fileName} an error occured: {ex.Message}");
+                LogError($"During processing {imgName} an error occured: {ex.Message}");
 
                 return false;
             }
@@ -109,10 +110,10 @@ namespace FoxSky.Img
         #endregion
 
         #region Private methods
-        private string PrepareDstDir(DateTime? photoDate)
+        private string PrepareDstDir(DateOnly? imgDate)
         {
-            var dstRoot = photoDate.HasValue ?
-                Path.Combine(DstRootPath, photoDate.Value.Year.ToString()) :
+            var dstRoot = imgDate.HasValue ?
+                Path.Combine(DstRootPath, imgDate.Value.Year.ToString()) :
                 DstRootPath;
 
             if (!System.IO.Directory.Exists(dstRoot))
@@ -122,42 +123,42 @@ namespace FoxSky.Img
 
             return dstRoot;
         }
-        private string PrepareNewFileName(string srcFileName, string dstPath, DateTime? photoDate)
+        private string PrepareNewFileName(string srcImgName, string dstImgPath, DateOnly? imgDate)
         {
-            var country = ReverseGeolocationRequestTask(srcFileName).Result;
+            var country = ReverseGeolocationRequestTask(srcImgName).Result;
 
-            var fileName = PicsOwnerSurname + (photoDate.HasValue ?
-                photoDate.Value.ToString("yyyy-MM-dd HH-mm-ss") + country :
-                Path.GetFileNameWithoutExtension(srcFileName));
+            var fileName = PicsOwnerSurname + (imgDate.HasValue ?
+                imgDate.Value.ToString("yyyy-MM-dd HH-mm-ss") + country :
+                Path.GetFileNameWithoutExtension(srcImgName));
 
             var processedFileName = RemoveTextSpaces(fileName);
 
-            var extension = Path.GetExtension(srcFileName).Trim();
-            var newFileName = Path.Combine(dstPath, processedFileName) + extension;
+            var extension = Path.GetExtension(srcImgName).Trim();
+            var newFileName = Path.Combine(dstImgPath, processedFileName) + extension;
             int i = 1;
 
             while (File.Exists(newFileName))
             {
-                var differs = CheckFileDiffers(srcFileName, newFileName);
+                var differs = CheckFileDiffers(srcImgName, newFileName);
 
                 if (!differs) break;
 
-                newFileName = Path.Combine(dstPath, $"{fileName}_{i}") + extension;
+                newFileName = Path.Combine(dstImgPath, $"{fileName}_{i}") + extension;
                 i++;
             }
             
             return newFileName;
         }
-        private async Task<string> ReverseGeolocationRequestTask(string imagePath)
+        private async Task<string> ReverseGeolocationRequestTask(string imgPath)
         {
-            var location = CreateLocation(imagePath);
+            var location = CreateLocation(imgPath);
 
             if (location != null)
             {
                 LocationGeocodeRequest locationGeocodeRequest = new()
                 {
                     Key = ApiKey,
-                    Location = CreateLocation(imagePath)
+                    Location = CreateLocation(imgPath)
                 };
                 string city = "",
                     country = "";
@@ -231,25 +232,21 @@ namespace FoxSky.Img
 
             return result.ToString();
         }
-        static string RemoveTextSpaces(string fileName)
+        static string RemoveTextSpaces(string imgName)
         {
-            var words = fileName.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            var words = imgName.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             var processedFileName = string.Join("", words);
 
             return processedFileName;
         }
         private static Coordinate? CreateLocation(string imgPath)
         {
-            var gps = ImageMetadataReader.ReadMetadata(imgPath)?
-                .OfType<GpsDirectory>()?
-                .FirstOrDefault();
-
-            if (gps != null)
+            using var reader = new ExifReader(imgPath);
+            if (reader.GetTagValue(ExifTags.GPSLatitude, out double[] latitudeTab) &&
+                reader.GetTagValue(ExifTags.GPSLongitude, out double[] longitudeTab))
             {
-                var location = gps?.GetGeoLocation();
-
-                double lat = location.Latitude;
-                double lon = location.Longitude;
+                double lat = latitudeTab[0] + (latitudeTab[1] / 60) + (latitudeTab[2] / 3600);
+                double lon = longitudeTab[0] + (longitudeTab[1] / 60) + (longitudeTab[2] / 3600);
 
                 Coordinate coordinate = new(lat, lon);
 
@@ -258,47 +255,46 @@ namespace FoxSky.Img
 
             else return null;
         }
-        private bool CheckFileDiffers(string srcFileName, string dstFileName)
+        private static bool CheckFileDiffers(string srcImgName, string dstImgName)
         {
-            return !File.Exists(dstFileName) ||
-                new FileInfo(srcFileName).Length != new FileInfo(dstFileName).Length ||
-                !SameBinaryContent(srcFileName, dstFileName);
+            return !File.Exists(dstImgName) ||
+                new FileInfo(srcImgName).Length != new FileInfo(dstImgName).Length ||
+                !SameBinaryContent(srcImgName, dstImgName);
         }
-        private bool SameBinaryContent(string fileName1, string fileName2)
+        private static bool SameBinaryContent(string imgName1, string imgName2)
         {
             int file1byte;
             int file2byte;
 
-            using (FileStream fileStream1 = new FileStream(fileName1, FileMode.Open),
-                fileStream2 = new FileStream(fileName2, FileMode.Open))
+            using FileStream fileStream1 = new(imgName1, FileMode.Open),
+                fileStream2 = new(imgName2, FileMode.Open);
+            while (true)
             {
-                while (true)
+                file1byte = fileStream1.ReadByte();
+                file2byte = fileStream2.ReadByte();
+
+                if (file1byte != file2byte)
                 {
-                    file1byte = fileStream1.ReadByte();
-                    file2byte = fileStream2.ReadByte();
+                    return false;
+                }
 
-                    if (file1byte != file2byte)
-                    {
-                        return false;
-                    }
-
-                    if (file1byte == file2byte && file1byte == -1)
-                    {
-                        break;
-                    }
+                if (file1byte == file2byte && file1byte == -1)
+                {
+                    break;
                 }
             }
 
             return true;
         }
-        private DateTime? ExtractPhotoDateFromExif(string fileName)
+        private static DateOnly? ExtractPhotoDateFromExif(string imgPath)
         {
-            DateTime dateTime;
+            using var reader = new ExifReader(imgPath);
+            if (reader.GetTagValue(ExifTags.DateTime, out DateOnly dateTime))
+            {
+                return dateTime;
+            }
 
-            return ImageMetadataReader.ReadMetadata(fileName)?
-                .OfType<ExifSubIfdDirectory>()?
-                .FirstOrDefault()?
-                .TryGetDateTime(ExifDirectoryBase.TagDateTimeOriginal, out dateTime) == true ? dateTime : null;
+            else return null;
         }
         public static void LogSuccess(string message)
         {
