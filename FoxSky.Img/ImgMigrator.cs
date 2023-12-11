@@ -1,12 +1,9 @@
 ﻿using System.Diagnostics;
 using GoogleApi.Entities.Maps.Geocoding.Location.Request;
-using System.Globalization;
+using ExifLib;
 using System.Text;
 using GoogleApi.Entities.Common;
-using ExifLib;
-using static System.Net.Mime.MediaTypeNames;
-using GoogleApi.Entities.Search.Common.Enums;
-using MetadataExtractor;
+using System.Globalization;
 
 namespace FoxSky.Img
 {
@@ -23,8 +20,9 @@ namespace FoxSky.Img
             get => "AIzaSyD_cpKBl4fKo8ASfe0ubQYHhRWbX_IpoSU"; 
         }
         public Mode Mode { get; set; }
+        private static readonly object consoleLock = new();
         #endregion
-        
+
         #region Public methods
         public bool ProcessImages()
         {
@@ -82,13 +80,13 @@ namespace FoxSky.Img
             int processed = 0;
             LogSuccess($"Found {filesCount} images.");
 
-            foreach (var fileName in files)
+            Parallel.ForEach(files, fileName =>
             {
                 if (ProcessImageFile(fileName))
                 {
                     processed++;
                 }
-            }
+            });
 
             var success = processed == filesCount;
 
@@ -286,48 +284,66 @@ namespace FoxSky.Img
 
             return true;
         }
-        private static DateOnly? ExtractPhotoDateFromExif(string imgPath)
+        private static DateOnly? ExtractPhotoDateFromExif(string fileName)
         {
-            using var reader = new ExifReader(imgPath);
-            if (reader.GetTagValue(ExifTags.DateTime, out DateOnly dateTime))
+            try
             {
-                return dateTime;
+                using var reader = new ExifReader(fileName);
+                if (reader.GetTagValue(ExifTags.DateTimeOriginal, out DateOnly dateTimeOriginal))
+                {
+                    return dateTimeOriginal;
+                }
+                else
+                {
+                    LogError("DateTimeOriginal information not found in the image.");
+                    return null;
+                }
             }
-
-            else return null;
+            catch (Exception ex)
+            {
+                LogError($"Error reading Exif data: {ex.Message}");
+                return null;
+            }
         }
         public static void LogSuccess(string message)
         {
-            try
+            lock (consoleLock)
             {
-                Console.Write($"[{DateTime.Now}]");
-                Console.Write($"{"\u001b[32m"}");
-                Console.Write("Success! ");
-                Console.Write($"{"\u001b[0m"}");
-                Console.Write($"{message}");
-                Debug.WriteLine(message);
-                Console.WriteLine();
+                try
+                {
+                    Console.Write($"[{DateTime.Now}]");
+                    Console.Write($"{"\u001b[32m"}");
+                    Console.Write("Success! ");
+                    Console.Write($"{"\u001b[0m"}");
+                    Console.Write($"{message}");
+                    Debug.WriteLine(message);
+                    Console.WriteLine();
+                }
+                finally
+                {
+                    Console.ResetColor();
+                }
             }
-            finally
-            {
-                Console.ResetColor();
-            }
+            
         }
         public static void LogError(string message)
         {
-            try
+            lock(consoleLock)
             {
-                Console.Write($"[{DateTime.Now}]");
-                Console.Write($"{"\u001b[31m"}");
-                Console.Write("Error! ");
-                Console.Write($"{"\u001b[0m"}");
-                Console.Write($"{message}");
-                Debug.WriteLine(message);
-                Console.WriteLine();
-            }
-            finally
-            {
-                Console.ResetColor();
+                try
+                {
+                    Console.Write($"[{DateTime.Now}]");
+                    Console.Write($"{"\u001b[31m"}");
+                    Console.Write("Error! ");
+                    Console.Write($"{"\u001b[0m"}");
+                    Console.Write($"{message}");
+                    Debug.WriteLine(message);
+                    Console.WriteLine();
+                }
+                finally
+                {
+                    Console.ResetColor();
+                }
             }
         }
 
