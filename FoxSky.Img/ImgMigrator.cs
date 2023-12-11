@@ -17,9 +17,9 @@ namespace FoxSky.Img
         public string? PicsOwnerSurname { get; set; }
         public string? SrcPath { get; set; }
         public string? DstRootPath { get; set; }
-        public string ApiKey 
+        public static string ApiKey 
         { 
-            get => "AIzaSyDbtz3cT0yNRkXbr1oqwf3jSNoxzta1INc"; 
+            get => "AIzaSyD_cpKBl4fKo8ASfe0ubQYHhRWbX_IpoSU"; 
         }
         public Mode Mode { get; set; }
         #endregion
