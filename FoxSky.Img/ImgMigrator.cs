@@ -1,9 +1,10 @@
-﻿using System.Diagnostics;
-using GoogleApi.Entities.Maps.Geocoding.Location.Request;
-using ExifLib;
-using System.Text;
+﻿using ExifLib;
 using GoogleApi.Entities.Common;
+using GoogleApi.Entities.Maps.Geocoding.Location.Request;
+using Newtonsoft.Json;
+using System.Diagnostics;
 using System.Globalization;
+using System.Text;
 
 namespace FoxSky.Img
 {
@@ -15,12 +16,12 @@ namespace FoxSky.Img
         public string? PicsOwnerSurname { get; set; }
         public string? SrcPath { get; set; }
         public string? DstRootPath { get; set; }
-        public string ApiKey 
-        { 
-            get => "AIzaSyD_cpKBl4fKo8ASfe0ubQYHhRWbX_IpoSU"; 
+        public string ApiKey
+        {
+            get => "AIzaSyD_cpKBl4fKo8ASfe0ubQYHhRWbX_IpoSU";
         }
         public Mode Mode { get; set; }
-        private static readonly object consoleLock = new();
+        private static readonly object Lock = new();
         #endregion
 
         #region Public methods
@@ -28,9 +29,9 @@ namespace FoxSky.Img
         {
             bool res = false;
 
-            if (File.Exists(SrcPath)) 
+            if (File.Exists(SrcPath))
                 res = ProcessImageFile(SrcPath);
-            else if (System.IO.Directory.Exists(SrcPath)) 
+            else if (System.IO.Directory.Exists(SrcPath))
                 res = ProcessDirectory(SrcPath);
             else
                 LogError($"{SrcPath} is not a valid file or directory.");
@@ -54,7 +55,7 @@ namespace FoxSky.Img
                     case Mode.Copy:
                         File.Copy(imgName, dstFileName, true);
                         break;
-                    
+
                     default:
                         throw new ArgumentException($"Unsupported mode {Mode}");
                 }
@@ -90,7 +91,7 @@ namespace FoxSky.Img
 
             var success = processed == filesCount;
 
-            if (filesCount == 0 )
+            if (filesCount == 0)
             {
                 LogSuccess("Nothing to do. No images found.");
             }
@@ -98,17 +99,58 @@ namespace FoxSky.Img
             {
                 LogSuccess($"All {filesCount} files processed succesfully.");
             }
-            else 
+            else
             {
                 LogError($"{filesCount - processed} of {filesCount} could not be processed.");
             }
 
             return success;
         }
+        public static void LogSuccess(string message)
+        {
+            lock (Lock)
+            {
+                try
+                {
+                    Console.Write($"[{DateTime.Now}]");
+                    Console.Write($"{"\u001b[32m"}");
+                    Console.Write("Success! ");
+                    Console.Write($"{"\u001b[0m"}");
+                    Console.Write($"{message}");
+                    Debug.WriteLine(message);
+                    Console.WriteLine();
+                }
+                finally
+                {
+                    Console.ResetColor();
+                }
+            }
+
+        }
+        public static void LogError(string message)
+        {
+            lock (Lock)
+            {
+                try
+                {
+                    Console.Write($"[{DateTime.Now}]");
+                    Console.Write($"{"\u001b[31m"}");
+                    Console.Write("Error! ");
+                    Console.Write($"{"\u001b[0m"}");
+                    Console.Write($"{message}");
+                    Debug.WriteLine(message);
+                    Console.WriteLine();
+                }
+                finally
+                {
+                    Console.ResetColor();
+                }
+            }
+        }
         #endregion
 
         #region Private methods
-        private string PrepareDstDir(DateOnly? imgDate)
+        private string PrepareDstDir(DateTime? imgDate)
         {
             var dstRoot = imgDate.HasValue ?
                 Path.Combine(DstRootPath, imgDate.Value.Year.ToString()) :
@@ -121,7 +163,7 @@ namespace FoxSky.Img
 
             return dstRoot;
         }
-        private string PrepareNewFileName(string srcImgName, string dstImgPath, DateOnly? imgDate)
+        private string PrepareNewFileName(string srcImgName, string dstImgPath, DateTime? imgDate)
         {
             var country = ReverseGeolocationRequestTask(srcImgName).Result;
 
@@ -144,7 +186,7 @@ namespace FoxSky.Img
                 newFileName = Path.Combine(dstImgPath, $"{fileName}_{i}") + extension;
                 i++;
             }
-            
+
             return newFileName;
         }
         private async Task<string> ReverseGeolocationRequestTask(string imgPath)
@@ -156,47 +198,42 @@ namespace FoxSky.Img
                 LocationGeocodeRequest locationGeocodeRequest = new()
                 {
                     Key = ApiKey,
-                    Location = CreateLocation(imgPath)
+                    Location = location
                 };
                 string city = "",
                     country = "";
-
                 var stringBuilder = new StringBuilder();
+                var apiResponse = await GoogleApi.GoogleMaps.Geocode.LocationGeocode.QueryAsync(locationGeocodeRequest);
+                var stringifiedResponse = apiResponse.RawJson.ToString();
+                var deserializedResponse = JsonConvert.DeserializeObject<Root>(stringifiedResponse);
+                var queryResult = new Dictionary<string, string>();
 
-                var res = await GoogleApi.GoogleMaps.Geocode.LocationGeocode.QueryAsync(locationGeocodeRequest);
-
-                if (res.Status == GoogleApi.Entities.Common.Enums.Status.Ok)
+                if (apiResponse.Status == GoogleApi.Entities.Common.Enums.Status.Ok)
                 {
-                    foreach (var result in res.Results)
-                    {
-                        foreach (var addressComponent in result.AddressComponents)
-                        {
-                            foreach (var type in addressComponent.Types)
-                            {
-                                if (type.ToString() == "Locality")
-                                {
-                                    city = ReplaceSpecialCharacters(addressComponent.LongName);
-                                }
-                                else if (type.ToString() == "Country")
-                                {
-                                    country = ReplaceSpecialCharacters(addressComponent.LongName);
-                                }
-                            }
-                        }
-                    }
+                    queryResult = deserializedResponse?.results?.FirstOrDefault()?.address_components
+                        ?.Where(ac => ac.types.Contains("country") || ac.types.Contains("locality"))
+                        ?.ToDictionary(ac => ac.types.Contains("country") ? "Country" : "City", ac => ac.long_name);
                 }
                 else
                 {
-                    Console.WriteLine($"Could not get resutls, Status: {res.Status}");
+                    Console.WriteLine($"Could not get resutls, Status: {apiResponse.Status}");
                 }
 
-                stringBuilder.Append(city);
-                stringBuilder.Append(country);
+                country = ReplaceSpecialCharacters(queryResult["Country"]);
+                city = ReplaceSpecialCharacters(queryResult["City"]);
 
-                return stringBuilder.ToString();
+                if (city != null &&  country != null)
+                {
+                    stringBuilder.Append(city);
+                    stringBuilder.Append(country);
+
+                    return stringBuilder.ToString();
+                }
+
+                return string.Empty;
             }
 
-            else return "";
+            else return string.Empty;
         }
         static string ReplaceSpecialCharacters(string input)
         {
@@ -206,7 +243,7 @@ namespace FoxSky.Img
                 {'ł', 'l'}
             };
 
-            StringBuilder result = new StringBuilder(input.Length);
+            var result = new StringBuilder(input.Length);
 
             foreach (char c in input)
             {
@@ -284,69 +321,27 @@ namespace FoxSky.Img
 
             return true;
         }
-        private static DateOnly? ExtractPhotoDateFromExif(string fileName)
+        private static DateTime? ExtractPhotoDateFromExif(string imgName)
         {
             try
             {
-                using var reader = new ExifReader(fileName);
-                if (reader.GetTagValue(ExifTags.DateTimeOriginal, out DateOnly dateTimeOriginal))
+                using var reader = new ExifReader(imgName);
+                if (reader.GetTagValue(ExifTags.DateTimeOriginal, out DateTime dateTimeOriginal))
                 {
                     return dateTimeOriginal;
                 }
                 else
                 {
-                    LogError("DateTimeOriginal information not found in the image.");
+                    LogError($"{imgName} → File creaton time information not found in the image.");
                     return null;
                 }
             }
             catch (Exception ex)
             {
-                LogError($"Error reading Exif data: {ex.Message}");
+                LogError($"{imgName} → Error occured during reading Exif data: {ex.Message}");
                 return null;
             }
         }
-        public static void LogSuccess(string message)
-        {
-            lock (consoleLock)
-            {
-                try
-                {
-                    Console.Write($"[{DateTime.Now}]");
-                    Console.Write($"{"\u001b[32m"}");
-                    Console.Write("Success! ");
-                    Console.Write($"{"\u001b[0m"}");
-                    Console.Write($"{message}");
-                    Debug.WriteLine(message);
-                    Console.WriteLine();
-                }
-                finally
-                {
-                    Console.ResetColor();
-                }
-            }
-            
-        }
-        public static void LogError(string message)
-        {
-            lock(consoleLock)
-            {
-                try
-                {
-                    Console.Write($"[{DateTime.Now}]");
-                    Console.Write($"{"\u001b[31m"}");
-                    Console.Write("Error! ");
-                    Console.Write($"{"\u001b[0m"}");
-                    Console.Write($"{message}");
-                    Debug.WriteLine(message);
-                    Console.WriteLine();
-                }
-                finally
-                {
-                    Console.ResetColor();
-                }
-            }
-        }
-
         #endregion
     }
 }
