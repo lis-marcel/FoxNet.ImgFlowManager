@@ -4,6 +4,7 @@ using GoogleApi.Entities.Maps.Geocoding.Location.Request;
 using Newtonsoft.Json;
 using System.Diagnostics;
 using System.Globalization;
+using System.Net.Http.Headers;
 using System.Text;
 
 namespace FoxSky.Img
@@ -193,47 +194,47 @@ namespace FoxSky.Img
         {
             var location = CreateLocation(imgPath);
 
-            if (location != null)
+            if (location == null)
             {
-                LocationGeocodeRequest locationGeocodeRequest = new()
-                {
-                    Key = ApiKey,
-                    Location = location
-                };
-                string city = "",
-                    country = "";
-                var stringBuilder = new StringBuilder();
-                var apiResponse = await GoogleApi.GoogleMaps.Geocode.LocationGeocode.QueryAsync(locationGeocodeRequest);
-                var stringifiedResponse = apiResponse.RawJson.ToString();
-                var deserializedResponse = JsonConvert.DeserializeObject<Root>(stringifiedResponse);
-                var queryResult = new Dictionary<string, string>();
-
-                if (apiResponse.Status == GoogleApi.Entities.Common.Enums.Status.Ok)
-                {
-                    queryResult = deserializedResponse?.results?.FirstOrDefault()?.address_components
-                        ?.Where(ac => ac.types.Contains("country") || ac.types.Contains("locality"))
-                        ?.ToDictionary(ac => ac.types.Contains("country") ? "Country" : "City", ac => ac.long_name);
-                }
-                else
-                {
-                    Console.WriteLine($"Could not get resutls, Status: {apiResponse.Status}");
-                }
-
-                country = ReplaceSpecialCharacters(queryResult["Country"]);
-                city = ReplaceSpecialCharacters(queryResult["City"]);
-
-                if (city != null &&  country != null)
-                {
-                    stringBuilder.Append(city);
-                    stringBuilder.Append(country);
-
-                    return stringBuilder.ToString();
-                }
-
                 return string.Empty;
             }
 
-            else return string.Empty;
+            LocationGeocodeRequest locationGeocodeRequest = new()
+            {
+                Key = ApiKey,
+                Location = location
+            };
+
+            var apiResponse = await GoogleApi.GoogleMaps.Geocode.LocationGeocode.QueryAsync(locationGeocodeRequest);
+
+            if (apiResponse.Status != GoogleApi.Entities.Common.Enums.Status.Ok)
+            {
+                Console.WriteLine($"Could not get resutls, Status: {apiResponse.Status}");
+                return string.Empty;
+            }
+
+            var deserializedResponse = JsonConvert.DeserializeObject<Root>(apiResponse.RawJson.ToString());
+
+            var queryResult = deserializedResponse?.results?.FirstOrDefault()?.address_components
+                ?.Where(ac => ac.types.Contains("country") || ac.types.Contains("locality"))
+                ?.ToDictionary(ac => ac.types.Contains("country") ? "Country" : "City", ac => ac.long_name);
+
+            string? country = queryResult.TryGetValue("Country", out var countryValue) 
+                ? ReplaceSpecialCharacters(countryValue) 
+                : null;
+            string? city = queryResult.TryGetValue("City", out var cityValue) 
+                ? ReplaceSpecialCharacters(cityValue) 
+                : null;
+
+            if (city != null && country != null)
+            {
+                return new StringBuilder()
+                    .Append(city)
+                    .Append(country)
+                    .ToString();
+            }
+
+            return string.Empty;
         }
         static string ReplaceSpecialCharacters(string input)
         {
