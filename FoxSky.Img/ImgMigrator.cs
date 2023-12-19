@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace FoxSky.Img
 {
@@ -39,6 +40,7 @@ namespace FoxSky.Img
 
             return res;
         }
+
         public bool ProcessImageFile(string imgName)
         {
             try
@@ -72,6 +74,7 @@ namespace FoxSky.Img
                 return false;
             }
         }
+
         public bool ProcessDirectory(string targetDirectory)
         {
             //Process found files
@@ -107,6 +110,7 @@ namespace FoxSky.Img
 
             return success;
         }
+
         public static void LogSuccess(string message)
         {
             lock (Lock)
@@ -128,6 +132,7 @@ namespace FoxSky.Img
             }
 
         }
+
         public static void LogError(string message)
         {
             lock (Lock)
@@ -164,6 +169,7 @@ namespace FoxSky.Img
 
             return dstRoot;
         }
+
         private string PrepareNewFileName(string srcImgName, string dstImgPath, DateTime? imgDate)
         {
             var country = ReverseGeolocationRequestTask(srcImgName).Result;
@@ -190,6 +196,7 @@ namespace FoxSky.Img
 
             return newFileName;
         }
+
         private async Task<string> ReverseGeolocationRequestTask(string imgPath)
         {
             var location = CreateLocation(imgPath);
@@ -236,38 +243,31 @@ namespace FoxSky.Img
 
             return string.Empty;
         }
+
         static string ReplaceSpecialCharacters(string input)
         {
-            Dictionary<char, char> characterReplacements = new()
-            {
-                {'Ł', 'L'},
-                {'ł', 'l'}
-            };
+            string normalizedString = input.Normalize(NormalizationForm.FormKD);
 
-            var result = new StringBuilder(input.Length);
-
-            foreach (char c in input)
+            var result = new StringBuilder();
+            foreach (char c in normalizedString)
             {
-                if (characterReplacements.TryGetValue(c, out char replacement))
+                if (c == 'ł' || c == 'Ł')
                 {
-                    result.Append(replacement);
+                    result.Append('l');
                 }
                 else
                 {
-                    string normalized = c.ToString().Normalize(NormalizationForm.FormD);
-
-                    foreach (char ch in normalized)
+                    UnicodeCategory category = CharUnicodeInfo.GetUnicodeCategory(c);
+                    if (category != UnicodeCategory.NonSpacingMark)
                     {
-                        if (CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark)
-                        {
-                            result.Append(ch);
-                        }
+                        result.Append(c);
                     }
                 }
             }
 
             return result.ToString();
         }
+
         static string RemoveTextSpaces(string imgName)
         {
             var words = imgName.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
@@ -275,6 +275,7 @@ namespace FoxSky.Img
 
             return processedFileName;
         }
+
         private static Coordinate? CreateLocation(string imgPath)
         {
             using var reader = new ExifReader(imgPath);
@@ -291,12 +292,14 @@ namespace FoxSky.Img
 
             else return null;
         }
+
         private static bool CheckFileDiffers(string srcImgName, string dstImgName)
         {
             return !File.Exists(dstImgName) ||
                 new FileInfo(srcImgName).Length != new FileInfo(dstImgName).Length ||
                 !SameBinaryContent(srcImgName, dstImgName);
         }
+
         private static bool SameBinaryContent(string imgName1, string imgName2)
         {
             int file1byte;
@@ -322,6 +325,7 @@ namespace FoxSky.Img
 
             return true;
         }
+
         private static DateTime? ExtractPhotoDateFromExif(string imgName)
         {
             try
@@ -343,6 +347,7 @@ namespace FoxSky.Img
                 return null;
             }
         }
+
         #endregion
     }
 }
