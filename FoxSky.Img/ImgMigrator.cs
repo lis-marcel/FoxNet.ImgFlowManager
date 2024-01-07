@@ -2,6 +2,7 @@
 using GoogleApi.Entities.Common;
 using GoogleApi.Entities.Maps.Geocoding.Location.Request;
 using Newtonsoft.Json;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
 using System.Net.Http.Headers;
@@ -18,12 +19,11 @@ namespace FoxSky.Img
         public string? PicsOwnerSurname { get; set; }
         public string? SrcPath { get; set; }
         public string? DstRootPath { get; set; }
-        public string ApiKey
-        {
-            get => "AIzaSyD_cpKBl4fKo8ASfe0ubQYHhRWbX_IpoSU";
-        }
+        public static string ApiKey => "AIzaSyD_cpKBl4fKo8ASfe0ubQYHhRWbX_IpoSU";
         public Mode Mode { get; set; }
-        private static readonly object Lock = new();
+
+        private static readonly object _lock = new();
+        private ConcurrentDictionary<string, object> _mutexes = new();
         #endregion
 
         #region Public methods
@@ -49,23 +49,24 @@ namespace FoxSky.Img
                 var dstPath = PrepareDstDir(photoDate);
                 var dstFileName = PrepareNewFileName(imgName, dstPath, photoDate);
 
-                switch (Mode)
+                lock (_mutexes.GetOrAdd(dstFileName, (s) => new object()))
                 {
-                    case Mode.Move:
-                        File.Move(imgName, dstFileName, true);
-                        break;
+                    switch (Mode)
+                    {
+                        case Mode.Move:
+                            File.Move(imgName, dstFileName, true);
+                            break;
 
-                    case Mode.Copy:
-                        File.Copy(imgName, dstFileName, true);
-                        break;
+                        case Mode.Copy:
+                            File.Copy(imgName, dstFileName, true);
+                            break;
 
-                    default:
-                        throw new ArgumentException($"Unsupported mode {Mode}");
+                        default:
+                            throw new ArgumentException($"Unsupported mode {Mode}");
+                    }
                 }
 
                 LogSuccess($"{imgName} → {dstFileName}");
-
-                return true;
             }
             catch (Exception ex)
             {
@@ -73,6 +74,8 @@ namespace FoxSky.Img
 
                 return false;
             }
+
+            return true;
         }
 
         public bool ProcessDirectory(string targetDirectory)
@@ -80,32 +83,35 @@ namespace FoxSky.Img
             //Process found files
             var files = System.IO.Directory.EnumerateFiles(targetDirectory, "*.jpg", SearchOption.AllDirectories)
                 .Union(System.IO.Directory.EnumerateFiles(targetDirectory, "*.jpeg", SearchOption.AllDirectories));
-
             var filesCount = files.Count();
-            int processed = 0;
+            int processedCount = 0;
+            bool success = true;
+
+            if (filesCount == 0)
+            {
+                LogSuccess("Nothing to do. No images found.");
+                return !success;
+            }
+
             LogSuccess($"Found {filesCount} images.");
 
             Parallel.ForEach(files, fileName =>
             {
                 if (ProcessImageFile(fileName))
                 {
-                    processed++;
+                    processedCount++;
                 }
             });
 
-            var success = processed == filesCount;
+            success = processedCount == filesCount;
 
-            if (filesCount == 0)
+            if (success)
             {
-                LogSuccess("Nothing to do. No images found.");
-            }
-            else if (success)
-            {
-                LogSuccess($"All {filesCount} files processed succesfully.");
+                LogSuccess($"All {filesCount} files processedCount succesfully.");
             }
             else
             {
-                LogError($"{filesCount - processed} of {filesCount} could not be processed.");
+                LogError($"{filesCount - processedCount} of {filesCount} could not be processedCount.");
             }
 
             return success;
@@ -113,44 +119,19 @@ namespace FoxSky.Img
 
         public static void LogSuccess(string message)
         {
-            lock (Lock)
+            lock (_lock)
             {
-                try
-                {
-                    Console.Write($"[{DateTime.Now}]");
-                    Console.Write($"{"\u001b[32m"}");
-                    Console.Write("Success! ");
-                    Console.Write($"{"\u001b[0m"}");
-                    Console.Write($"{message}");
-                    Debug.WriteLine(message);
-                    Console.WriteLine();
-                }
-                finally
-                {
-                    Console.ResetColor();
-                }
+                Console.WriteLine($"[{DateTime.Now}]{"\u001b[32m"}Success! {"\u001b[0m"}{message}");
+                Debug.WriteLine(message);
             }
-
         }
 
         public static void LogError(string message)
         {
-            lock (Lock)
+            lock (_lock)
             {
-                try
-                {
-                    Console.Write($"[{DateTime.Now}]");
-                    Console.Write($"{"\u001b[31m"}");
-                    Console.Write("Error! ");
-                    Console.Write($"{"\u001b[0m"}");
-                    Console.Write($"{message}");
-                    Debug.WriteLine(message);
-                    Console.WriteLine();
-                }
-                finally
-                {
-                    Console.ResetColor();
-                }
+                Console.WriteLine($"[{DateTime.Now}]{"\u001b[31m"}Error! {"\u001b[0m"}{message}");
+                Debug.WriteLine(message);
             }
         }
         #endregion
@@ -184,9 +165,17 @@ namespace FoxSky.Img
             var newFileName = Path.Combine(dstImgPath, processedFileName) + extension;
             int i = 1;
 
+            const int tryDelayMs = 10;
+            int tries = 0;
+
             while (File.Exists(newFileName))
-            {
-                var differs = CheckFileDiffers(srcImgName, newFileName);
+            { 
+
+                bool differs = false;
+                lock (_mutexes.GetOrAdd(newFileName, (s) => new object()))
+                {
+                    differs = CheckFileDiffers(srcImgName, newFileName);
+                }
 
                 if (!differs) break;
 
@@ -248,7 +237,7 @@ namespace FoxSky.Img
         {
             string normalizedString = input.Normalize(NormalizationForm.FormKD);
 
-            var result = new StringBuilder();
+            StringBuilder result = new();
             foreach (char c in normalizedString)
             {
                 if (c == 'ł' || c == 'Ł')
