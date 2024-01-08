@@ -22,6 +22,7 @@ namespace FoxSky.Img
         public static string ApiKey => "AIzaSyD_cpKBl4fKo8ASfe0ubQYHhRWbX_IpoSU";
         public Mode Mode { get; set; }
 
+        private string _errorPath { get; set; }
         private static readonly object _lock = new();
         private ConcurrentDictionary<string, object> _mutexes = new();
         #endregion
@@ -46,7 +47,7 @@ namespace FoxSky.Img
             try
             {
                 var photoDate = ExtractPhotoDateFromExif(imgName);
-                var dstPath = PrepareDstDir(photoDate);
+                var dstPath = CreateYearDstDir(photoDate);
                 var dstFileName = PrepareNewFileName(imgName, dstPath, photoDate);
 
                 lock (_mutexes.GetOrAdd(dstFileName, (s) => new object()))
@@ -137,7 +138,7 @@ namespace FoxSky.Img
         #endregion
 
         #region Private methods
-        private string PrepareDstDir(DateTime? imgDate)
+        private string CreateYearDstDir(DateTime? imgDate)
         {
             var dstRoot = imgDate.HasValue ?
                 Path.Combine(DstRootPath, imgDate.Value.Year.ToString()) :
