@@ -16,9 +16,8 @@ class Program
         }
         else
         {
-
-            var imgMigrator = new ImgMigrator() { PicsOwnerSurname = args[0], SrcPath = args[1], DstRootPath = args[2] };
-            resSuccess = imgMigrator.ProcessImages();
+            var imgMigrator = new ImgMigrator(args[0], args[1], args[2]);
+            resSuccess = imgMigrator.StartProcessing();
         }
 
         stopwatch.Stop();

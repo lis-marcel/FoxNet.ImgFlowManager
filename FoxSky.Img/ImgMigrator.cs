@@ -5,9 +5,7 @@ using Newtonsoft.Json;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
-using System.Net.Http.Headers;
 using System.Text;
-using System.Text.RegularExpressions;
 
 namespace FoxSky.Img
 {
@@ -19,16 +17,25 @@ namespace FoxSky.Img
         public string? PicsOwnerSurname { get; set; }
         public string? SrcPath { get; set; }
         public string? DstRootPath { get; set; }
-        public static string ApiKey => "AIzaSyD_cpKBl4fKo8ASfe0ubQYHhRWbX_IpoSU";
         public Mode Mode { get; set; }
 
-        private string _errorPath { get; set; }
+        private static string? _errorPath;
         private static readonly object _lock = new();
+        private static string _apiKey => "AIzaSyD_cpKBl4fKo8ASfe0ubQYHhRWbX_IpoSU";
         private ConcurrentDictionary<string, object> _mutexes = new();
         #endregion
 
         #region Public methods
-        public bool ProcessImages()
+        public ImgMigrator(string picsOwnerSurname, string srcPath, string dstRootPath)
+        {
+            PicsOwnerSurname = picsOwnerSurname;
+            SrcPath = srcPath;
+            DstRootPath = dstRootPath;
+
+            _errorPath = CreateImageProcessingErrorDir();
+        }
+
+        public bool StartProcessing()
         {
             bool res = false;
 
@@ -42,7 +49,27 @@ namespace FoxSky.Img
             return res;
         }
 
-        public bool ProcessImageFile(string imgName)
+        public static void LogSuccess(string message)
+        {
+            lock (_lock)
+            {
+                Console.WriteLine($"[{DateTime.Now}]{"\u001b[32m"}Success! {"\u001b[0m"}{message}");
+                Debug.WriteLine(message);
+            }
+        }
+
+        public static void LogError(string message)
+        {
+            lock (_lock)
+            {
+                Console.WriteLine($"[{DateTime.Now}]{"\u001b[31m"}Error! {"\u001b[0m"}{message}");
+                Debug.WriteLine(message);
+            }
+        }
+        #endregion
+
+        #region Private methods
+        private bool ProcessImageFile(string imgName)
         {
             try
             {
@@ -55,11 +82,11 @@ namespace FoxSky.Img
                     switch (Mode)
                     {
                         case Mode.Move:
-                            File.Move(imgName, dstFileName, true);
+                            MoveImg(imgName, dstFileName, true);
                             break;
 
                         case Mode.Copy:
-                            File.Copy(imgName, dstFileName, true);
+                            CopyImg(imgName, dstFileName, true);
                             break;
 
                         default:
@@ -72,6 +99,7 @@ namespace FoxSky.Img
             catch (Exception ex)
             {
                 LogError($"During processing {imgName} an error occured: {ex.Message}");
+                CopyImg(imgName, _errorPath, true);
 
                 return false;
             }
@@ -79,7 +107,7 @@ namespace FoxSky.Img
             return true;
         }
 
-        public bool ProcessDirectory(string targetDirectory)
+        private bool ProcessDirectory(string targetDirectory)
         {
             //Process found files
             var files = System.IO.Directory.EnumerateFiles(targetDirectory, "*.jpg", SearchOption.AllDirectories)
@@ -118,26 +146,18 @@ namespace FoxSky.Img
             return success;
         }
 
-        public static void LogSuccess(string message)
+        private static void MoveImg(string imgPath, string dstPath, bool overWrite)
         {
-            lock (_lock)
-            {
-                Console.WriteLine($"[{DateTime.Now}]{"\u001b[32m"}Success! {"\u001b[0m"}{message}");
-                Debug.WriteLine(message);
-            }
+            File.Move(imgPath, dstPath, overWrite);
         }
 
-        public static void LogError(string message)
+        private static void CopyImg(string imgPath, string dstPath, bool overWrite)
         {
-            lock (_lock)
-            {
-                Console.WriteLine($"[{DateTime.Now}]{"\u001b[31m"}Error! {"\u001b[0m"}{message}");
-                Debug.WriteLine(message);
-            }
-        }
-        #endregion
+            string fileName =
 
-        #region Private methods
+            File.Copy(imgPath, dstPath, overWrite);
+        }
+
         private string CreateYearDstDir(DateTime? imgDate)
         {
             var dstRoot = imgDate.HasValue ?
@@ -150,6 +170,16 @@ namespace FoxSky.Img
             }
 
             return dstRoot;
+        }
+
+        private string CreateImageProcessingErrorDir()
+        {
+            string errorDirPath = Path.Combine(DstRootPath, "_error");
+
+            if (!Directory.Exists(errorDirPath))
+                Directory.CreateDirectory(errorDirPath);
+
+            return errorDirPath;
         }
 
         private string PrepareNewFileName(string srcImgName, string dstImgPath, DateTime? imgDate)
@@ -166,12 +196,8 @@ namespace FoxSky.Img
             var newFileName = Path.Combine(dstImgPath, processedFileName) + extension;
             int i = 1;
 
-            const int tryDelayMs = 10;
-            int tries = 0;
-
             while (File.Exists(newFileName))
-            { 
-
+            {
                 bool differs = false;
                 lock (_mutexes.GetOrAdd(newFileName, (s) => new object()))
                 {
@@ -187,7 +213,7 @@ namespace FoxSky.Img
             return newFileName;
         }
 
-        private async Task<string> ReverseGeolocationRequestTask(string imgPath)
+        private static async Task<string> ReverseGeolocationRequestTask(string imgPath)
         {
             var location = CreateLocation(imgPath);
 
@@ -198,7 +224,7 @@ namespace FoxSky.Img
 
             LocationGeocodeRequest locationGeocodeRequest = new()
             {
-                Key = ApiKey,
+                Key = _apiKey,
                 Location = location
             };
 
@@ -216,11 +242,11 @@ namespace FoxSky.Img
                 ?.Where(ac => ac.types.Contains("country") || ac.types.Contains("locality"))
                 ?.ToDictionary(ac => ac.types.Contains("country") ? "Country" : "City", ac => ac.long_name);
 
-            string? country = queryResult.TryGetValue("Country", out var countryValue) 
-                ? ReplaceSpecialCharacters(countryValue) 
+            string? country = queryResult.TryGetValue("Country", out var countryValue)
+                ? ReplaceSpecialCharacters(countryValue)
                 : null;
-            string? city = queryResult.TryGetValue("City", out var cityValue) 
-                ? ReplaceSpecialCharacters(cityValue) 
+            string? city = queryResult.TryGetValue("City", out var cityValue)
+                ? ReplaceSpecialCharacters(cityValue)
                 : null;
 
             if (city != null && country != null)
@@ -328,12 +354,14 @@ namespace FoxSky.Img
                 else
                 {
                     LogError($"{imgName} → File creaton time information not found in the image.");
+                    CopyImg(imgName, _errorPath, true);
                     return null;
                 }
             }
             catch (Exception ex)
             {
                 LogError($"{imgName} → Error occured during reading Exif data: {ex.Message}");
+                CopyImg(imgName, _errorPath, true);
                 return null;
             }
         }

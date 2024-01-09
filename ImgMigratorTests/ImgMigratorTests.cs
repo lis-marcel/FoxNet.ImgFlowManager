@@ -79,7 +79,7 @@ namespace ImgMigratorTests
         public void PositiveProcessImagesFileTest(string correctSrcFilePath, string dstFilePath)
         {
             var imgMigrator = new ImgMigrator() { SrcPath = correctSrcFilePath, DstRootPath = dstFilePath, Mode = Mode.Copy };
-            Assert.IsTrue(imgMigrator.ProcessImages());
+            Assert.IsTrue(imgMigrator.StartProcessing());
         }
 
         [TestMethod]
@@ -87,7 +87,7 @@ namespace ImgMigratorTests
         public void UnpositiveProcessImageTest(string incorrectSrcFilePath, string dstFilePath)
         {
             var imgMigrator = new ImgMigrator() { SrcPath = incorrectSrcFilePath, DstRootPath = dstFilePath, Mode = Mode.Copy };
-            Assert.IsFalse(imgMigrator.ProcessImages());
+            Assert.IsFalse(imgMigrator.StartProcessing());
         }
 
         [TestMethod]
