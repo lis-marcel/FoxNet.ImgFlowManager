@@ -35,20 +35,18 @@ namespace FoxSky.Img
             _errorPath = CreateImageProcessingErrorDir();
         }
 
-        public bool StartProcessing()
+        public Task<bool> StartProcessing()
         {
-            bool res = false;
-
             if (File.Exists(SrcPath))
-                res = ProcessImageFile(SrcPath);
+                return ProcessImageFile(SrcPath);
             else if (System.IO.Directory.Exists(SrcPath))
-                res = ProcessDirectory(SrcPath);
+                return Task.FromResult(ProcessDirectory(SrcPath));
             else
                 LogError($"{SrcPath} is not a valid file or directory.");
 
-            return res;
+            return
+                Task.FromException<bool>(new InvalidOperationException());
         }
-
         public static void LogSuccess(string message)
         {
             lock (_lock)
@@ -57,7 +55,6 @@ namespace FoxSky.Img
                 Debug.WriteLine(message);
             }
         }
-
         public static void LogError(string message)
         {
             lock (_lock)
@@ -69,24 +66,31 @@ namespace FoxSky.Img
         #endregion
 
         #region Private methods
-        private bool ProcessImageFile(string imgName)
+        private async Task<bool> ProcessImageFile(string srcImgPath)
         {
+            var photoDate = ExtractPhotoDateFromExif(srcImgPath);
+            var dstYearDir = CreateYearDstDir(photoDate);
+            var dstFilePath = await PrepareNewFileName(srcImgPath, dstYearDir, photoDate);
+
             try
             {
-                var photoDate = ExtractPhotoDateFromExif(imgName);
-                var dstPath = CreateYearDstDir(photoDate);
-                var dstFileName = PrepareNewFileName(imgName, dstPath, photoDate);
+                // Check for null values
+                if (photoDate == null)
+                {
+                    CopyErrorImg(srcImgPath, true);
+                    return false;
+                }
 
-                lock (_mutexes.GetOrAdd(dstFileName, (s) => new object()))
+                lock (_mutexes.GetOrAdd(dstFilePath, (s) => new object()))
                 {
                     switch (Mode)
                     {
                         case Mode.Move:
-                            MoveImg(imgName, dstFileName, true);
+                            MoveImg(srcImgPath, dstFilePath, true);
                             break;
 
                         case Mode.Copy:
-                            CopyImg(imgName, dstFileName, true);
+                            CopyImg(srcImgPath, dstFilePath, true);
                             break;
 
                         default:
@@ -94,13 +98,12 @@ namespace FoxSky.Img
                     }
                 }
 
-                LogSuccess($"{imgName} → {dstFileName}");
+                LogSuccess($"{srcImgPath} → {dstFilePath}");
             }
             catch (Exception ex)
             {
-                LogError($"During processing {imgName} an error occured: {ex.Message}");
-                CopyImg(imgName, _errorPath, true);
-
+                LogError($"During processing {srcImgPath} an error occurred: {ex.Message}");
+                CopyErrorImg(srcImgPath, true);
                 return false;
             }
 
@@ -124,9 +127,9 @@ namespace FoxSky.Img
 
             LogSuccess($"Found {filesCount} images.");
 
-            Parallel.ForEach(files, fileName =>
+            Parallel.ForEach(files, async fileName => 
             {
-                if (ProcessImageFile(fileName))
+                if (await ProcessImageFile(fileName))
                 {
                     processedCount++;
                 }
@@ -145,19 +148,21 @@ namespace FoxSky.Img
 
             return success;
         }
-
         private static void MoveImg(string imgPath, string dstPath, bool overWrite)
         {
             File.Move(imgPath, dstPath, overWrite);
         }
-
         private static void CopyImg(string imgPath, string dstPath, bool overWrite)
         {
-            string fileName =
-
             File.Copy(imgPath, dstPath, overWrite);
         }
+        private static void CopyErrorImg(string imgPath, bool overWrite)
+        {
+            string dstFileName = Path.GetFileName(imgPath);
+            string errorDstPath = Path.Combine(_errorPath, dstFileName);
 
+            File.Copy(imgPath, errorDstPath, overWrite);
+        }
         private string CreateYearDstDir(DateTime? imgDate)
         {
             var dstRoot = imgDate.HasValue ?
@@ -171,7 +176,6 @@ namespace FoxSky.Img
 
             return dstRoot;
         }
-
         private string CreateImageProcessingErrorDir()
         {
             string errorDirPath = Path.Combine(DstRootPath, "_error");
@@ -181,10 +185,9 @@ namespace FoxSky.Img
 
             return errorDirPath;
         }
-
-        private string PrepareNewFileName(string srcImgName, string dstImgPath, DateTime? imgDate)
+        private async Task<string> PrepareNewFileName(string srcImgName, string dstImgPath, DateTime? imgDate)
         {
-            var country = ReverseGeolocationRequestTask(srcImgName).Result;
+            var country = await ReverseGeolocationRequestTask(srcImgName);
 
             var fileName = PicsOwnerSurname + (imgDate.HasValue ?
                 imgDate.Value.ToString("yyyy-MM-dd HH-mm-ss") + country :
@@ -212,7 +215,6 @@ namespace FoxSky.Img
 
             return newFileName;
         }
-
         private static async Task<string> ReverseGeolocationRequestTask(string imgPath)
         {
             var location = CreateLocation(imgPath);
@@ -259,7 +261,6 @@ namespace FoxSky.Img
 
             return string.Empty;
         }
-
         static string ReplaceSpecialCharacters(string input)
         {
             string normalizedString = input.Normalize(NormalizationForm.FormKD);
@@ -283,7 +284,6 @@ namespace FoxSky.Img
 
             return result.ToString();
         }
-
         static string RemoveTextSpaces(string imgName)
         {
             var words = imgName.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
@@ -291,7 +291,6 @@ namespace FoxSky.Img
 
             return processedFileName;
         }
-
         private static Coordinate? CreateLocation(string imgPath)
         {
             using var reader = new ExifReader(imgPath);
@@ -308,14 +307,12 @@ namespace FoxSky.Img
 
             else return null;
         }
-
         private static bool CheckFileDiffers(string srcImgName, string dstImgName)
         {
             return !File.Exists(dstImgName) ||
                 new FileInfo(srcImgName).Length != new FileInfo(dstImgName).Length ||
                 !SameBinaryContent(srcImgName, dstImgName);
         }
-
         private static bool SameBinaryContent(string imgName1, string imgName2)
         {
             int file1byte;
@@ -341,29 +338,26 @@ namespace FoxSky.Img
 
             return true;
         }
-
-        private static DateTime? ExtractPhotoDateFromExif(string imgName)
+        private static DateTime? ExtractPhotoDateFromExif(string srcImgPath)
         {
             try
             {
-                using var reader = new ExifReader(imgName);
+                using var reader = new ExifReader(srcImgPath);
                 if (reader.GetTagValue(ExifTags.DateTimeOriginal, out DateTime dateTimeOriginal))
                 {
                     return dateTimeOriginal;
                 }
                 else
                 {
-                    LogError($"{imgName} → File creaton time information not found in the image.");
-                    CopyImg(imgName, _errorPath, true);
-                    return null;
+                    LogError($"{srcImgPath} → File creaton time information not found in the image.");
                 }
             }
             catch (Exception ex)
             {
-                LogError($"{imgName} → Error occured during reading Exif data: {ex.Message}");
-                CopyImg(imgName, _errorPath, true);
-                return null;
+                LogError($"{srcImgPath} → Error occured during reading Exif data: {ex.Message}");
             }
+
+            return null;
         }
 
         #endregion
