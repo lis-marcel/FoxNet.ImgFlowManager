@@ -35,17 +35,17 @@ namespace FoxSky.Img
             _errorPath = CreateImageProcessingErrorDir();
         }
 
-        public Task<bool> StartProcessing()
+        public bool StartProcessing()
         {
             if (File.Exists(SrcPath))
                 return ProcessImageFile(SrcPath);
             else if (System.IO.Directory.Exists(SrcPath))
-                return Task.FromResult(ProcessDirectory(SrcPath));
+                return ProcessDirectory(SrcPath);
             else
+            {
                 LogError($"{SrcPath} is not a valid file or directory.");
-
-            return
-                Task.FromException<bool>(new InvalidOperationException());
+                return false;
+            }
         }
         public static void LogSuccess(string message)
         {
@@ -66,36 +66,26 @@ namespace FoxSky.Img
         #endregion
 
         #region Private methods
-        private async Task<bool> ProcessImageFile(string srcImgPath)
+        private bool ProcessImageFile(string srcImgPath)
         {
-            var photoDate = ExtractPhotoDateFromExif(srcImgPath);
-            var dstYearDir = CreateYearDstDir(photoDate);
-            var dstFilePath = await PrepareNewFileName(srcImgPath, dstYearDir, photoDate);
-
             try
             {
-                // Check for null values
-                if (photoDate == null)
+                var photoDate = ExtractPhotoDateFromExif(srcImgPath);
+                var dstYearDir = CreateYearDstDir(photoDate);
+                var dstFilePath = PrepareNewFileName(srcImgPath, dstYearDir, photoDate);
+
+                switch (Mode)
                 {
-                    CopyErrorImg(srcImgPath, true);
-                    return false;
-                }
+                    case Mode.Move:
+                        MoveImg(srcImgPath, dstFilePath, true);
+                        break;
 
-                lock (_mutexes.GetOrAdd(dstFilePath, (s) => new object()))
-                {
-                    switch (Mode)
-                    {
-                        case Mode.Move:
-                            MoveImg(srcImgPath, dstFilePath, true);
-                            break;
+                    case Mode.Copy:
+                        CopyImg(srcImgPath, dstFilePath, true);
+                        break;
 
-                        case Mode.Copy:
-                            CopyImg(srcImgPath, dstFilePath, true);
-                            break;
-
-                        default:
-                            throw new ArgumentException($"Unsupported mode {Mode}");
-                    }
+                    default:
+                        throw new ArgumentException($"Unsupported mode {Mode}");
                 }
 
                 LogSuccess($"{srcImgPath} → {dstFilePath}");
@@ -103,19 +93,17 @@ namespace FoxSky.Img
             catch (Exception ex)
             {
                 LogError($"During processing {srcImgPath} an error occurred: {ex.Message}");
-                CopyErrorImg(srcImgPath, true);
                 return false;
             }
 
             return true;
         }
-
         private bool ProcessDirectory(string targetDirectory)
         {
             //Process found files
-            var files = System.IO.Directory.EnumerateFiles(targetDirectory, "*.jpg", SearchOption.AllDirectories)
+            IEnumerable<string> files = System.IO.Directory.EnumerateFiles(targetDirectory, "*.jpg", SearchOption.AllDirectories)
                 .Union(System.IO.Directory.EnumerateFiles(targetDirectory, "*.jpeg", SearchOption.AllDirectories));
-            var filesCount = files.Count();
+            int filesCount = files.Count();
             int processedCount = 0;
             bool success = true;
 
@@ -127,9 +115,9 @@ namespace FoxSky.Img
 
             LogSuccess($"Found {filesCount} images.");
 
-            Parallel.ForEach(files, async fileName => 
+            Parallel.ForEach(files, fileName => 
             {
-                if (await ProcessImageFile(fileName))
+                if (ProcessImageFile(fileName))
                 {
                     processedCount++;
                 }
@@ -156,13 +144,6 @@ namespace FoxSky.Img
         {
             File.Copy(imgPath, dstPath, overWrite);
         }
-        private static void CopyErrorImg(string imgPath, bool overWrite)
-        {
-            string dstFileName = Path.GetFileName(imgPath);
-            string errorDstPath = Path.Combine(_errorPath, dstFileName);
-
-            File.Copy(imgPath, errorDstPath, overWrite);
-        }
         private string CreateYearDstDir(DateTime? imgDate)
         {
             var dstRoot = imgDate.HasValue ?
@@ -185,9 +166,9 @@ namespace FoxSky.Img
 
             return errorDirPath;
         }
-        private async Task<string> PrepareNewFileName(string srcImgName, string dstImgPath, DateTime? imgDate)
+        private string PrepareNewFileName(string srcImgName, string dstImgPath, DateTime? imgDate)
         {
-            var country = await ReverseGeolocationRequestTask(srcImgName);
+            var country = ReverseGeolocationRequestTask(srcImgName);
 
             var fileName = PicsOwnerSurname + (imgDate.HasValue ?
                 imgDate.Value.ToString("yyyy-MM-dd HH-mm-ss") + country :
@@ -215,7 +196,7 @@ namespace FoxSky.Img
 
             return newFileName;
         }
-        private static async Task<string> ReverseGeolocationRequestTask(string imgPath)
+        private static string ReverseGeolocationRequestTask(string imgPath)
         {
             var location = CreateLocation(imgPath);
 
@@ -230,7 +211,7 @@ namespace FoxSky.Img
                 Location = location
             };
 
-            var apiResponse = await GoogleApi.GoogleMaps.Geocode.LocationGeocode.QueryAsync(locationGeocodeRequest);
+            var apiResponse = GoogleApi.GoogleMaps.Geocode.LocationGeocode.QueryAsync(locationGeocodeRequest).Result;
 
             if (apiResponse.Status != GoogleApi.Entities.Common.Enums.Status.Ok)
             {
@@ -318,25 +299,29 @@ namespace FoxSky.Img
             int file1byte;
             int file2byte;
 
-            using FileStream fileStream1 = new(imgName1, FileMode.Open),
-                fileStream2 = new(imgName2, FileMode.Open);
-            while (true)
+            using (
+                FileStream
+                    fileStream1 = new(imgName1, FileMode.Open),
+                    fileStream2 = new(imgName2, FileMode.Open))
             {
-                file1byte = fileStream1.ReadByte();
-                file2byte = fileStream2.ReadByte();
-
-                if (file1byte != file2byte)
+                while (true)
                 {
-                    return false;
+                    file1byte = fileStream1.ReadByte();
+                    file2byte = fileStream2.ReadByte();
+
+                    if (file1byte != file2byte)
+                    {
+                        return false;
+                    }
+
+                    if (file1byte == file2byte && file1byte == -1)
+                    {
+                        break;
+                    }
                 }
 
-                if (file1byte == file2byte && file1byte == -1)
-                {
-                    break;
-                }
+                return true;
             }
-
-            return true;
         }
         private static DateTime? ExtractPhotoDateFromExif(string srcImgPath)
         {

@@ -17,7 +17,7 @@ class Program
         else
         {
             var imgMigrator = new ImgMigrator(args[0], args[1], args[2]);
-            resSuccess = imgMigrator.StartProcessing().Result;
+            resSuccess = imgMigrator.StartProcessing();
         }
 
         stopwatch.Stop();
