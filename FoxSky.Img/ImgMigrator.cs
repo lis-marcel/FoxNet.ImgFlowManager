@@ -115,7 +115,9 @@ namespace FoxSky.Img
 
             LogSuccess($"Found {filesCount} images.");
 
-            Parallel.ForEach(files, fileName => 
+            //Parallel.ForEach(files, fileName => 
+
+            files.ToList().ForEach(fileName =>
             {
                 if (ProcessImageFile(fileName))
                 {
@@ -131,7 +133,7 @@ namespace FoxSky.Img
             }
             else
             {
-                LogError($"{filesCount - processedCount} of {filesCount} could not be processedCount.");
+                LogError($"{filesCount - processedCount} of {filesCount} could not be processed.");
             }
 
             return success;
@@ -168,16 +170,12 @@ namespace FoxSky.Img
         }
         private string PrepareNewFileName(string srcImgName, string dstImgPath, DateTime? imgDate)
         {
-            var country = ReverseGeolocationRequestTask(srcImgName);
-
-            var fileName = PicsOwnerSurname + (imgDate.HasValue ?
-                imgDate.Value.ToString("yyyy-MM-dd HH-mm-ss") + country :
-                Path.GetFileNameWithoutExtension(srcImgName));
-
-            var processedFileName = RemoveTextSpaces(fileName);
+            var country = ReverseGeolocationRequestTask(srcImgName)?.RemoveTextSpaces();
+            var dateSignature = imgDate.HasValue ? imgDate.Value.ToString("yyyy-MM-dd HH-mm-ss") : Path.GetFileNameWithoutExtension(srcImgName);
+            var fileName = $"{PicsOwnerSurname}_{dateSignature}_{country}";
 
             var extension = Path.GetExtension(srcImgName).Trim();
-            var newFileName = Path.Combine(dstImgPath, processedFileName) + extension;
+            var newFileName = Path.Combine(dstImgPath, fileName) + extension;
             int i = 1;
 
             while (File.Exists(newFileName))
@@ -196,81 +194,36 @@ namespace FoxSky.Img
 
             return newFileName;
         }
-        private static string ReverseGeolocationRequestTask(string imgPath)
+        private static string? ReverseGeolocationRequestTask(string imgPath)
         {
             var location = CreateLocation(imgPath);
+            string? res = null;
 
-            if (location == null)
+            if (location != null)
             {
-                return string.Empty;
-            }
 
-            LocationGeocodeRequest locationGeocodeRequest = new()
-            {
-                Key = _apiKey,
-                Location = location
-            };
-
-            var apiResponse = GoogleApi.GoogleMaps.Geocode.LocationGeocode.QueryAsync(locationGeocodeRequest).Result;
-
-            if (apiResponse.Status != GoogleApi.Entities.Common.Enums.Status.Ok)
-            {
-                Console.WriteLine($"Could not get resutls, Status: {apiResponse.Status}");
-                return string.Empty;
-            }
-
-            var deserializedResponse = JsonConvert.DeserializeObject<Root>(apiResponse.RawJson.ToString());
-
-            var queryResult = deserializedResponse?.results?.FirstOrDefault()?.address_components
-                ?.Where(ac => ac.types.Contains("country") || ac.types.Contains("locality"))
-                ?.ToDictionary(ac => ac.types.Contains("country") ? "Country" : "City", ac => ac.long_name);
-
-            string? country = queryResult.TryGetValue("Country", out var countryValue)
-                ? ReplaceSpecialCharacters(countryValue)
-                : null;
-            string? city = queryResult.TryGetValue("City", out var cityValue)
-                ? ReplaceSpecialCharacters(cityValue)
-                : null;
-
-            if (city != null && country != null)
-            {
-                return new StringBuilder()
-                    .Append(city)
-                    .Append(country)
-                    .ToString();
-            }
-
-            return string.Empty;
-        }
-        static string ReplaceSpecialCharacters(string input)
-        {
-            string normalizedString = input.Normalize(NormalizationForm.FormKD);
-
-            StringBuilder result = new();
-            foreach (char c in normalizedString)
-            {
-                if (c == 'ł' || c == 'Ł')
+                LocationGeocodeRequest locationGeocodeRequest = new()
                 {
-                    result.Append('l');
-                }
-                else
+                    Key = _apiKey,
+                    Location = location
+                };
+
+                var apiResponse = GoogleApi.GoogleMaps.Geocode.LocationGeocode.QueryAsync(locationGeocodeRequest).Result;
+
+                if (apiResponse.Status == GoogleApi.Entities.Common.Enums.Status.Ok)
                 {
-                    UnicodeCategory category = CharUnicodeInfo.GetUnicodeCategory(c);
-                    if (category != UnicodeCategory.NonSpacingMark)
-                    {
-                        result.Append(c);
-                    }
+                    var deserializedResponse = JsonConvert.DeserializeObject<Root>(apiResponse.RawJson.ToString());
+
+                    var queryResult = deserializedResponse?.results?.FirstOrDefault()?.address_components
+                        ?.Where(ac => ac.types.Contains("country") || ac.types.Contains("locality"))
+                        ?.ToDictionary(ac => ac.types.Contains("country") ? "Country" : "City", ac => ac.long_name);
+
+                    queryResult?.TryGetValue("City", out res);
+                    res = res?.ReplaceSpecialCharacters();
                 }
             }
 
-            return result.ToString();
-        }
-        static string RemoveTextSpaces(string imgName)
-        {
-            var words = imgName.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            var processedFileName = string.Join("", words);
-
-            return processedFileName;
+            return res;
         }
         private static Coordinate? CreateLocation(string imgPath)
         {
@@ -278,8 +231,8 @@ namespace FoxSky.Img
             if (reader.GetTagValue(ExifTags.GPSLatitude, out double[] latitudeTab) &&
                 reader.GetTagValue(ExifTags.GPSLongitude, out double[] longitudeTab))
             {
-                double lat = latitudeTab[0] + (latitudeTab[1] / 60) + (latitudeTab[2] / 3600);
-                double lon = longitudeTab[0] + (longitudeTab[1] / 60) + (longitudeTab[2] / 3600);
+                double lat = latitudeTab[0] + (latitudeTab[1] / 60.0) + (latitudeTab[2] / 3600.0);
+                double lon = longitudeTab[0] + (longitudeTab[1] / 60.0) + (longitudeTab[2] / 3600.0);
 
                 Coordinate coordinate = new(lat, lon);
 
@@ -288,6 +241,7 @@ namespace FoxSky.Img
 
             else return null;
         }
+
         private static bool CheckFileDiffers(string srcImgName, string dstImgName)
         {
             return !File.Exists(dstImgName) ||
