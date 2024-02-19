@@ -231,8 +231,11 @@ namespace FoxSky.Img
             if (reader.GetTagValue(ExifTags.GPSLatitude, out double[] latitudeTab) &&
                 reader.GetTagValue(ExifTags.GPSLongitude, out double[] longitudeTab))
             {
-                double lat = latitudeTab[0] + (latitudeTab[1] / 60.0) + (latitudeTab[2] / 3600.0);
-                double lon = longitudeTab[0] + (longitudeTab[1] / 60.0) + (longitudeTab[2] / 3600.0);
+                reader.GetTagValue(ExifTags.GPSLatitudeRef, out string latRef);
+                reader.GetTagValue(ExifTags.GPSLongitudeRef, out string longRef);
+
+                double lat = (latRef == "N" ? 1 : -1) * Math.Abs(latitudeTab[0] + (latitudeTab[1] / 60.0) + (latitudeTab[2] / 3600.0));
+                double lon = (longRef == "E" ? 1 : -1) * Math.Abs(longitudeTab[0] + (longitudeTab[1] / 60.0) + (longitudeTab[2] / 3600.0));
 
                 Coordinate coordinate = new(lat, lon);
 
