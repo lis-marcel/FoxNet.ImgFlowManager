@@ -12,7 +12,7 @@ class Program
 
         if (args.Length < 3)
         {
-            ImgMigrator.LogError("Invalid params.");
+            Logger.LogError("Invalid params.");
         }
         else
         {
