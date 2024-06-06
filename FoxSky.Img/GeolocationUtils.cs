@@ -7,7 +7,7 @@ namespace FoxSky.Img
 {
     public class GeolocationUtils
     {
-        private static string _apiKey => "AIzaSyD_cpKBl4fKo8ASfe0ubQYHhRWbX_IpoSU";
+        private static string _apiKey => "";
 
         public static string? ReverseGeolocationRequestTask(string imgPath)
         {
