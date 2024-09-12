@@ -73,6 +73,8 @@ namespace FoxSky.Img
         }
         public bool ProcessDirectory(string targetDirectory)
         {
+            LogSuccess($"Processing: {targetDirectory}");
+
             //Process found files
             var files = System.IO.Directory.EnumerateFiles(targetDirectory, "*.jpg", SearchOption.AllDirectories)
                 .Union(System.IO.Directory.EnumerateFiles(targetDirectory, "*.jpeg", SearchOption.AllDirectories));
