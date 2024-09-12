@@ -126,16 +126,16 @@ namespace FoxSky.Img
         }
         private string PrepareNewFileName(string srcFileName, string dstPath, DateTime? photoDate)
         {
-            var country = ReverseGeolocationRequestTask(srcFileName).Result;
+            var place = ReverseGeolocationRequestTask(srcFileName).Result;
 
-            var fileName = PicsOwnerSurname + (photoDate.HasValue ?
-                photoDate.Value.ToString("yyyy-MM-dd HH-mm-ss") + country :
+            var fileName = PicsOwnerSurname + "_" + (photoDate.HasValue ?
+                photoDate.Value.ToString("yyyy-MM-dd_HH-mm-ss") + "_" + place :
                 Path.GetFileNameWithoutExtension(srcFileName));
 
-            var processedFileName = RemoveTextSpaces(fileName);
+            //var processedFileName = RemoveTextSpaces(fileName);
 
             var extension = Path.GetExtension(srcFileName).Trim();
-            var newFileName = Path.Combine(dstPath, processedFileName) + extension;
+            var newFileName = Path.Combine(dstPath, fileName) + extension;
             int i = 1;
 
             while (File.Exists(newFileName))
@@ -164,8 +164,6 @@ namespace FoxSky.Img
                 string city = "",
                     country = "";
 
-                var stringBuilder = new StringBuilder();
-
                 var res = await GoogleApi.GoogleMaps.Geocode.LocationGeocode.QueryAsync(locationGeocodeRequest);
 
                 if (res.Status == GoogleApi.Entities.Common.Enums.Status.Ok)
@@ -184,6 +182,9 @@ namespace FoxSky.Img
                                 {
                                     country = ReplaceSpecialCharacters(addressComponent.LongName);
                                 }
+
+                                if (string.IsNullOrEmpty(city) && string.IsNullOrEmpty(country))
+                                    break;
                             }
                         }
                     }
@@ -193,10 +194,7 @@ namespace FoxSky.Img
                     Console.WriteLine($"Could not get resutls, Status: {res.Status}");
                 }
 
-                stringBuilder.Append(city);
-                stringBuilder.Append(country);
-
-                return stringBuilder.ToString();
+                return $"{city}_{country}";
             }
 
             else return "";

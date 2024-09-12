@@ -8,11 +8,7 @@ docker build -t foxsky-img-renamer -f Dockerfile .
 # tworzenie kontenera
 docker create --name renamer foxsky-img-renamer
 
-# pojedyncze uruchomienie kontenera z obrazu oraz przekazanie parametrow przez linie polecen, 
-# kontener zostanie usuniety po wykonaniu (--rm)
-docker run -it --rm foxsky-img-renamer c:\temp\in c:\temp\out
-
-# uzycie woluminow
+# pojedyncze uruchomienie kontenera ( kontener zostanie usuniety po wykonaniu --rm) z uzyciem woluminow
 docker run -it --rm -v c:\temp\in:/src -v c:\temp\out:/dst foxsky-img-renamer 
 
 # uruchomienie kontenera do inspekcji z wlasnym punktem wejscia
