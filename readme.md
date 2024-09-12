@@ -3,13 +3,17 @@
 net localgroup docker-users "mk-marcin-hp\mlis" /ADD
 
 # tworzenie obrazu
-docker build -t foxsky-img-renamer -f Dockerfile .
+docker build -t hawix/foxsky-img-renamer -f Dockerfile .
+docker buildx build --platform linux/amd64,linux/arm64 -t hawix/foxsky-img-renamer -f dockerfile .
 
 # tworzenie kontenera
-docker create --name renamer foxsky-img-renamer
+docker create --name renamer hawix/foxsky-img-renamer
 
 # pojedyncze uruchomienie kontenera ( kontener zostanie usuniety po wykonaniu --rm) z uzyciem woluminow
-docker run -it --rm -v c:\temp\in:/src -v c:\temp\out:/dst foxsky-img-renamer 
+docker run -it --rm -v c:\temp\in:/src -v c:\temp\out:/dst hawix/foxsky-img-renamer 
 
 # uruchomienie kontenera do inspekcji z wlasnym punktem wejscia
-docker run -d --entrypoint sleep foxsky-img-renamer 3600
+docker run -d --entrypoint sleep hawix/foxsky-img-renamer 3600
+
+# popchniecie obrazu do galerii
+docker push hawix/foxsky-img-renamer 
