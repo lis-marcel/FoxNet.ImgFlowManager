@@ -126,13 +126,11 @@ namespace FoxSky.Img
         }
         private string PrepareNewFileName(string srcFileName, string dstPath, DateTime? photoDate)
         {
-            var place = ReverseGeolocationRequestTask(srcFileName).Result;
+            var place = RemoveSpaces(ReverseGeolocationRequestTask(srcFileName).Result);
 
             var fileName = PicsOwnerSurname + "_" + (photoDate.HasValue ?
                 photoDate.Value.ToString("yyyy-MM-dd_HH-mm-ss") + "_" + place :
                 Path.GetFileNameWithoutExtension(srcFileName));
-
-            //var processedFileName = RemoveTextSpaces(fileName);
 
             var extension = Path.GetExtension(srcFileName).Trim();
             var newFileName = Path.Combine(dstPath, fileName) + extension;
@@ -174,16 +172,16 @@ namespace FoxSky.Img
                         {
                             foreach (var type in addressComponent.Types)
                             {
-                                if (type.ToString() == "Locality")
+                                if (string.IsNullOrEmpty(city) && type.ToString() == "Locality")
                                 {
                                     city = ReplaceSpecialCharacters(addressComponent.LongName);
                                 }
-                                else if (type.ToString() == "Country")
+                                else if (string.IsNullOrEmpty(country) && type.ToString() == "Country")
                                 {
                                     country = ReplaceSpecialCharacters(addressComponent.LongName);
                                 }
 
-                                if (string.IsNullOrEmpty(city) && string.IsNullOrEmpty(country))
+                                if (!string.IsNullOrEmpty(city) && !string.IsNullOrEmpty(country))
                                     break;
                             }
                         }
@@ -231,32 +229,30 @@ namespace FoxSky.Img
 
             return result.ToString();
         }
-        static string RemoveTextSpaces(string fileName)
+        static string RemoveSpaces(string s)
         {
-            var words = fileName.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            var processedFileName = string.Join("", words);
-
-            return processedFileName;
+            return !string.IsNullOrEmpty(s) ? s.Replace(" ", "") : s;
         }
+
         private static Coordinate? CreateLocation(string imgPath)
         {
+            Coordinate? res = null;
+            
             var gps = ImageMetadataReader.ReadMetadata(imgPath)?
                 .OfType<GpsDirectory>()?
                 .FirstOrDefault();
 
-            if (gps != null)
-            {
-                var location = gps?.GetGeoLocation();
+            var location = gps?.GetGeoLocation();
 
+            if (location != null)
+            {
                 double lat = location.Latitude;
                 double lon = location.Longitude;
 
-                Coordinate coordinate = new(lat, lon);
-
-                return coordinate;
+                res = new(lat, lon);
             }
 
-            else return null;
+            return res;
         }
         private bool CheckFileDiffers(string srcFileName, string dstFileName)
         {

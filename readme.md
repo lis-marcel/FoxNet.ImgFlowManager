@@ -5,6 +5,7 @@ net localgroup docker-users "mk-marcin-hp\mlis" /ADD
 # tworzenie obrazu
 docker build -t hawix/foxsky-img-renamer -f Dockerfile .
 docker buildx build --platform linux/amd64,linux/arm64 -t hawix/foxsky-img-renamer -f dockerfile .
+docker buildx build -t hawix/foxsky-img-renamer -f dockerfile .
 
 # tworzenie kontenera
 docker create --name renamer hawix/foxsky-img-renamer
