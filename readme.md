@@ -1,4 +1,4 @@
-# jak masz problemy z uruchomieniem Docker na Windows, uruchom a poziomu admin, a potem przeloguj usera
+# jak masz problemy z uruchomieniem Docker na Windows, uruchom z poziomu admin, a potem przeloguj usera
 # konto usera pobierz z whoami
 net localgroup docker-users "mk-marcin-hp\mlis" /ADD
 
