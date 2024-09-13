@@ -12,6 +12,7 @@ docker create --name renamer hawix/foxsky-img-renamer
 
 # pojedyncze uruchomienie kontenera ( kontener zostanie usuniety po wykonaniu --rm) z uzyciem woluminow
 docker run -it --rm -v c:\temp\in:/src -v c:\temp\out:/dst hawix/foxsky-img-renamer 
+docker run -it --rm -v /media/data/storage/share/transfer/photo_inbox:/src -v /media/data/storage/share/transfer/photo_outbox:/dst hawix/foxsky-img-renamer 
 
 # uruchomienie kontenera do inspekcji z wlasnym punktem wejscia
 docker run -d --entrypoint sleep hawix/foxsky-img-renamer 3600
