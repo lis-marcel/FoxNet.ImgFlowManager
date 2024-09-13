@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build-env
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0 AS build-env
 ARG TARGETARCH
 ARG BUILDPLATFORM
 WORKDIR /FoxSky.Img
@@ -11,7 +11,7 @@ RUN dotnet restore -a $TARGETARCH
 RUN dotnet publish -a $TARGETARCH -c Release -o out
 
 # Build runtime image
-FROM mcr.microsoft.com/dotnet/runtime:8.0.8-jammy-arm64v8
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/runtime:8.0
 WORKDIR /FoxSky.Img
 VOLUME src
 VOLUME dst
