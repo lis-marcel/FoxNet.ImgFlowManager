@@ -24,7 +24,7 @@ namespace FoxSky.Img
             get => "AIzaSyD_cpKBl4fKo8ASfe0ubQYHhRWbX_IpoSU";
         }
 
-        private static Dictionary<Coordinate, string> locationCache = [];
+        private static List<Tuple<Coordinate, string>> locationCache = [];
         #endregion
 
         #region Public properties
@@ -303,20 +303,13 @@ namespace FoxSky.Img
         {
             if (!string.IsNullOrEmpty(locationName))
             {
-                locationCache[location] = locationName;
+                locationCache.Add(new (location, locationName));
             }
         }
 
-        private string GetCachedLocation(Coordinate location)
+        private string? GetCachedLocation(Coordinate location)
         {
-            foreach (var cachedLocation in locationCache.Keys)
-            {
-                if (IsWithinDistance(location, cachedLocation, distance))
-                {
-                    return locationCache[cachedLocation];
-                }
-            }
-            return string.Empty;
+            return locationCache.FirstOrDefault(c => IsWithinDistance(location, c.Item1, distance))?.Item2;
         }
 
         private static bool IsWithinDistance(Coordinate loc1, Coordinate loc2, double distanceInMeters)
