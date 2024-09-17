@@ -1,12 +1,15 @@
 ﻿using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
 using System.Diagnostics;
-using GoogleApi.Entities.Maps.Geocoding.Location.Request;
 using System.Globalization;
 using System.Text;
 using GoogleApi.Entities.Common;
 using System.Device.Location;
+using System.Net.Http;
+using Newtonsoft.Json.Linq;
+using System.Threading.Tasks;
 using static System.Net.Mime.MediaTypeNames;
+using GoogleApi.Entities.Maps.AddressValidation.Request;
 
 namespace FoxSky.Img
 {
@@ -19,59 +22,46 @@ namespace FoxSky.Img
         private string? srcPath;
         private string? dstRootPath;
         private double distance;
-        private static string apiKey
-        {
-            get => "AIzaSyD_cpKBl4fKo8ASfe0ubQYHhRWbX_IpoSU";
-        }
+        private readonly string requestBaseUri = "https://nominatim.openstreetmap.org/reverse?format=json";
 
         private static List<Tuple<Coordinate, string>> locationCache = [];
         #endregion
 
         #region Public properties
-        public string? PicsOwnerSurname 
-        { 
+        public string? PicsOwnerSurname
+        {
             get => picsOwnerSurname;
-            set
-            {
-                picsOwnerSurname = value; 
-            }
+            set { picsOwnerSurname = value; }
         }
         public string? SrcPath
         {
             get => srcPath;
-            set
-            {
-                srcPath = value;
-            }
+            set { srcPath = value; }
         }
         public string? DstRootPath
         {
             get => dstRootPath;
-            set
-            {
-                dstRootPath = value;
-            }
+            set { dstRootPath = value; }
         }
         public string? Distance
         {
             get => distance.ToString();
-            set
-            {
+            set {
                 if (value != null)
                     distance = double.Parse(value);
             }
         }
         public Mode Mode { get; set; }
         #endregion
-        
+
         #region Public methods
         public async Task<bool> ProcessImages()
         {
             bool processResult = false;
 
-            if (File.Exists(srcPath)) 
+            if (File.Exists(srcPath))
                 processResult = await ProcessImageFile(srcPath);
-            else if (System.IO.Directory.Exists(srcPath)) 
+            else if (System.IO.Directory.Exists(srcPath))
                 processResult = await ProcessDirectory(srcPath);
             else
                 LogError($"{srcPath} is not a valid file or directory.");
@@ -96,7 +86,7 @@ namespace FoxSky.Img
                     case Mode.Copy:
                         File.Copy(srcFilePath, dstFilePath, true);
                         break;
-                    
+
                     default:
                         throw new ArgumentException($"Unsupported mode {Mode}");
                 }
@@ -135,7 +125,7 @@ namespace FoxSky.Img
 
             var success = processed == filesCount;
 
-            if (filesCount == 0 )
+            if (filesCount == 0)
             {
                 LogSuccess("Nothing to do. No images found.");
             }
@@ -143,14 +133,13 @@ namespace FoxSky.Img
             {
                 LogSuccess($"All {filesCount} files processed succesfully.");
             }
-            else 
+            else
             {
                 LogError($"{filesCount - processed} of {filesCount} could not be processed.");
             }
 
             return success;
         }
-
         #endregion
 
         #region Private methods
@@ -189,73 +178,67 @@ namespace FoxSky.Img
                 newFileName = Path.Combine(dstPath, $"{fileName}_{i}") + extension;
                 i++;
             }
-            
+
             return newFileName;
         }
 
         private async Task<string> ReverseGeolocationRequestTask(string imagePath)
         {
             var location = CreateLocation(imagePath);
+            string fullLocationName;
 
-            if (location != null)
+            if (location == null)
             {
-                var cachedLocation = GetCachedLocation(location);
+                return string.Empty;
+            }
 
-                if (!string.IsNullOrEmpty(cachedLocation))
-                {
-                    return cachedLocation;
-                }
+            var cachedLocation = GetCachedLocation(location);
 
-                LocationGeocodeRequest locationGeocodeRequest = new()
-                {
-                    Key = apiKey,
-                    Location = location
-                };
+            if (!string.IsNullOrEmpty(cachedLocation))
+            {
+                return cachedLocation;
+            }
+            else
+            {
                 StringBuilder sb = new();
-                string fullLocationName = string.Empty, 
-                    city = string.Empty, 
-                    country = string.Empty;
 
-                var apiGeolocationResponse = await GoogleApi.GoogleMaps.Geocode.LocationGeocode.QueryAsync(locationGeocodeRequest);
+                sb.Append(requestBaseUri);
+                sb.Append("&lat=");
+                sb.Append(location.Latitude.ToString(CultureInfo.InvariantCulture));
+                sb.Append("&lon=");
+                sb.Append(location.Longitude.ToString(CultureInfo.InvariantCulture));
+                sb.Append("&zoom=10&addressdetails=1");
 
-                if (apiGeolocationResponse.Status == GoogleApi.Entities.Common.Enums.Status.Ok)
+                string requestUri = sb.ToString();
+
+                var response = await new HttpClient().GetAsync(requestUri);
+
+                if (response.IsSuccessStatusCode)
                 {
-                    foreach (var result in apiGeolocationResponse.Results)
-                    {
-                        foreach (var addressComponent in result.AddressComponents)
-                        {
-                            foreach (var type in addressComponent.Types)
-                            {
-                                if (type.ToString() == "Locality")
-                                {
-                                    city = ReplaceSpecialCharacters(addressComponent.LongName);
-                                }
-                                else if (type.ToString() == "Country")
-                                {
-                                    country = ReplaceSpecialCharacters(addressComponent.LongName);
-                                }
+                    fullLocationName = ExtractCityAndCountry(await response.Content.ReadAsStringAsync());
 
-                                if (!string.IsNullOrEmpty(city) && !string.IsNullOrEmpty(country))
-                                {
-                                    sb.Append(city);
-                                    sb.Append('_');
-                                    sb.Append(country);
-
-                                    fullLocationName = sb.ToString();
-
-                                    AddLocationToCache(location, fullLocationName);
-
-                                    return fullLocationName;
-                                }
-
-                            }
-                        }
-                    }
+                    AddLocationToCache(location, fullLocationName);
                 }
                 else
                 {
-                    Console.WriteLine($"Could not get resutls, Status: {apiGeolocationResponse.Status}");
+                    fullLocationName = string.Empty;
                 }
+            }
+
+            return fullLocationName;
+        }
+
+        private static string ExtractCityAndCountry(string response)
+        {
+            var json = JObject.Parse(response);
+
+            var address = json["address"];
+            var city = address?["city"]?.ToString();
+            var country = address?["country"]?.ToString();
+
+            if (!string.IsNullOrEmpty(city) && !string.IsNullOrEmpty(country))
+            {
+                return $"{ReplaceSpecialCharacters(city)}_{ReplaceSpecialCharacters(country)}";
             }
 
             return string.Empty;
