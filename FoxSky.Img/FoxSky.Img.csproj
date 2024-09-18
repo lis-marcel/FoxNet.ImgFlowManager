@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -10,8 +10,7 @@
   <ItemGroup>
     <PackageReference Include="Geocoding.Google" Version="4.0.1" />
     <PackageReference Include="Google.Api.Gax" Version="4.8.0" />
-    <PackageReference Include="GoogleApi" Version="5.4.7" />
-    <PackageReference Include="GoogleMapsApi" Version="1.2.1" />
+    <PackageReference Include="GoogleApi" Version="5.4.8" />
     <PackageReference Include="MetadataExtractor" Version="2.8.1" />
     <PackageReference Include="System.Device.Location.Portable" Version="1.0.0" />
     <PackageReference Include="Wibci.CountryReverseGeocode" Version="2.1.0" />

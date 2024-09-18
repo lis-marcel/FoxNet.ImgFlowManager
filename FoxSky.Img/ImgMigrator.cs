@@ -13,7 +13,7 @@ using GoogleApi.Entities.Maps.AddressValidation.Request;
 
 namespace FoxSky.Img
 {
-    public enum Mode { Move, Copy }
+    public enum Mode { Copy, Move }
 
     public class ImgMigrator
     {
@@ -21,8 +21,9 @@ namespace FoxSky.Img
         private string? picsOwnerSurname;
         private string? srcPath;
         private string? dstRootPath;
-        private double distance;
-        private readonly string requestBaseUri = "https://nominatim.openstreetmap.org/reverse?format=json";
+        private string? userEmail;
+        private double radius;
+        private readonly string requestBaseUri = "https://nominatim.openstreetmap.org/reverse?";
 
         private static List<Tuple<Coordinate, string>> locationCache = [];
         #endregion
@@ -43,12 +44,17 @@ namespace FoxSky.Img
             get => dstRootPath;
             set { dstRootPath = value; }
         }
-        public string? Distance
+        public string? UserEmail 
+        { 
+            get => userEmail;
+            set { userEmail = value; } 
+        }
+        public string? Radius
         {
-            get => distance.ToString();
+            get => radius.ToString();
             set {
                 if (value != null)
-                    distance = double.Parse(value);
+                    radius = double.Parse(value);
             }
         }
         public Mode Mode { get; set; }
@@ -202,12 +208,11 @@ namespace FoxSky.Img
             {
                 StringBuilder sb = new();
 
-                sb.Append(requestBaseUri);
-                sb.Append("&lat=");
-                sb.Append(location.Latitude.ToString(CultureInfo.InvariantCulture));
-                sb.Append("&lon=");
-                sb.Append(location.Longitude.ToString(CultureInfo.InvariantCulture));
-                sb.Append("&zoom=10&addressdetails=1");
+                sb.Append($"{requestBaseUri}" +
+                    $"format=json&email={userEmail}" +
+                    $"&lat={location.Latitude.ToString(CultureInfo.InvariantCulture)}" +
+                    $"&lon={location.Longitude.ToString(CultureInfo.InvariantCulture)}" +
+                    $"&zoom=10&addressdetails=1&accept-language=en");
 
                 string requestUri = sb.ToString();
 
@@ -231,18 +236,35 @@ namespace FoxSky.Img
         private static string ExtractCityAndCountry(string response)
         {
             var json = JObject.Parse(response);
-
             var address = json["address"];
-            var city = address?["city"]?.ToString();
-            var country = address?["country"]?.ToString();
+            string fullLocation = string.Empty;
+            StringBuilder sb = new();
 
-            if (!string.IsNullOrEmpty(city) && !string.IsNullOrEmpty(country))
+            if (address != null)
             {
-                return $"{ReplaceSpecialCharacters(city)}_{ReplaceSpecialCharacters(country)}";
+                var city = address["city"]?.ToString() ??
+                       address["town"]?.ToString() ??
+                       address["village"]?.ToString();
+
+                sb.Append(city);
+
+                sb.Append('_');
+
+                var country = address?["country"]?.ToString();
+
+                sb.Append(country);
+
+                fullLocation = sb.ToString();
             }
 
-            return string.Empty;
+            if (!string.IsNullOrEmpty(fullLocation))
+            {
+                ReplaceSpecialCharacters(fullLocation);
+            }
+
+            return fullLocation;
         }
+
 
         private static string ReplaceSpecialCharacters(string input)
         {
@@ -252,7 +274,7 @@ namespace FoxSky.Img
                 {'ł', 'l'}
             };
 
-            StringBuilder result = new StringBuilder(input.Length);
+            StringBuilder result = new(input.Length);
 
             foreach (char c in input)
             {
@@ -262,20 +284,13 @@ namespace FoxSky.Img
                 }
                 else
                 {
-                    string normalized = c.ToString().Normalize(NormalizationForm.FormD);
-
-                    foreach (char ch in normalized)
-                    {
-                        if (CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark)
-                        {
-                            result.Append(ch);
-                        }
-                    }
+                    result.Append(c);
                 }
             }
 
             return result.ToString();
         }
+
 
         private static string RemoveSpaces(string s)
         {
@@ -292,7 +307,7 @@ namespace FoxSky.Img
 
         private string? GetCachedLocation(Coordinate location)
         {
-            return locationCache.FirstOrDefault(c => IsWithinDistance(location, c.Item1, distance))?.Item2;
+            return locationCache.FirstOrDefault(c => IsWithinDistance(location, c.Item1, radius))?.Item2;
         }
 
         private static bool IsWithinDistance(Coordinate loc1, Coordinate loc2, double distanceInMeters)
