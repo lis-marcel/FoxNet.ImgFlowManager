@@ -2,7 +2,7 @@
   "profiles": {
     "FoxSky.Img": {
       "commandName": "Project",
-      "commandLineArgs": "Lis C:\\temp\\pics C:\\temp\\results 500"
+      "commandLineArgs": "Lis C:\\temp\\osmTest C:\\temp\\results marcel.test@gmail.com 500"
     }
   }
 }
