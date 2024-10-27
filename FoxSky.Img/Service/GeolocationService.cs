@@ -45,7 +45,7 @@ namespace FoxSky.Img.Service
                     $"format=json&email={userEmail}" +
                     $"&lat={location.Latitude.ToString(CultureInfo.InvariantCulture)}" +
                     $"&lon={location.Longitude.ToString(CultureInfo.InvariantCulture)}" +
-                    $"&zoom=10&addressdetails=1&accept-language=en");
+                    $"&zoom=13&addressdetails=1&accept-language=en");
 
                 string requestUri = sb.ToString();
 
@@ -75,9 +75,11 @@ namespace FoxSky.Img.Service
 
             if (address != null)
             {
-                var city = address["city"]?.ToString() ??
-                       address["town"]?.ToString() ??
-                       address["village"]?.ToString();
+                var city = address["village"]?.ToString() ??
+                           address["city"]?.ToString() ??
+                           address["town"]?.ToString() ??
+                           address["municipality"]?.ToString() ??
+                           address["county"]?.ToString();
 
                 sb.Append(city);
 
