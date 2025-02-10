@@ -8,7 +8,7 @@ namespace FoxSky.Img.FileProcessors
 {
     public enum Mode
     {
+        Copy,
         Move,
-        Copy
     }
 }

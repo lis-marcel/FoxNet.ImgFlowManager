@@ -1,8 +1,12 @@
 ﻿using FoxSky.Img.Service;
 using FoxSky.Img.Utilities;
+using FoxSky.Img.FileProcessors;
 using MetadataExtractor.Formats.Exif;
 using MetadataExtractor;
-using FoxSky.Img.FileProcessors;
+using System.Threading.Tasks;
+using System.IO;
+using System.Linq;
+using System;
 
 namespace FoxSky.Img.Processors
 {
@@ -51,8 +55,9 @@ namespace FoxSky.Img.Processors
         {
             Logger.LogSuccess($"Processing: {targetDirectory}");
 
-            var files = System.IO.Directory.EnumerateFiles(targetDirectory, "*.jpg", SearchOption.AllDirectories)
-                .Union(System.IO.Directory.EnumerateFiles(targetDirectory, "*.jpeg", SearchOption.AllDirectories));
+            var extensions = FileExtensionExtenstions.GetExtensions();
+            var files = extensions.SelectMany(ext => 
+                System.IO.Directory.EnumerateFiles(targetDirectory, "*" + ext, SearchOption.AllDirectories));
 
             var filesCount = files.Count();
             int processed = 0;
@@ -84,7 +89,7 @@ namespace FoxSky.Img.Processors
             return success;
         }
 
-        private string PrepareDstDir(DateTime? photoDate, string dstRootPath)
+        private static string PrepareDstDir(DateTime? photoDate, string dstRootPath)
         {
             var dstRoot = photoDate.HasValue ?
                 Path.Combine(dstRootPath, photoDate.Value.Year.ToString()) :
@@ -103,10 +108,17 @@ namespace FoxSky.Img.Processors
             var place = TextUtils.RemoveSpaces(await geolocationService.ReverseGeolocationRequestTask(srcFileName, processor.UserEmail, processor.Radius));
 
             var fileName = processor.PicsOwnerSurname + "_" + (photoDate.HasValue ?
-                photoDate.Value.ToString("yyyy-MM-dd_HH-mm-ss") + "_" + place :
+                photoDate.Value.ToString("yyyy-MM-dd HH-mm-ss") + "_" + place :
                 Path.GetFileNameWithoutExtension(srcFileName));
 
             var extension = Path.GetExtension(srcFileName).Trim();
+
+            // If the extension is .jpeg, change it to .jpg
+            if (extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
+            {
+                extension = ".jpg";
+            }
+
             var newFileName = Path.Combine(dstPath, fileName) + extension;
             int i = 1;
 
@@ -123,14 +135,14 @@ namespace FoxSky.Img.Processors
             return newFileName;
         }
 
-        private bool CheckFileDiffers(string srcFileName, string dstFileName)
+        private static bool CheckFileDiffers(string srcFileName, string dstFileName)
         {
             return !File.Exists(dstFileName) ||
                 new FileInfo(srcFileName).Length != new FileInfo(dstFileName).Length ||
                 !SameBinaryContent(srcFileName, dstFileName);
         }
 
-        private bool SameBinaryContent(string fileName1, string fileName2)
+        private static bool SameBinaryContent(string fileName1, string fileName2)
         {
             int file1byte;
             int file2byte;
@@ -158,7 +170,7 @@ namespace FoxSky.Img.Processors
             return true;
         }
 
-        private DateTime? ExtractPhotoDateFromExif(string fileName)
+        private static DateTime? ExtractPhotoDateFromExif(string fileName)
         {
             DateTime dateTime;
 
