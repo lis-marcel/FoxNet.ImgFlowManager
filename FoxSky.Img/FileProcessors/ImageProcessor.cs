@@ -16,6 +16,7 @@ namespace FoxSky.Img.Processors
         public string? PicsOwnerSurname { get; set; }
         public string? SrcPath { get; set; }
         public string? DstRootPath { get; set; }
+        public bool AddGeolocationFlag { get; set; }
         public string? UserEmail { get; set; }
         public string? Radius { get; set; }
         public Mode Mode { get; set; }

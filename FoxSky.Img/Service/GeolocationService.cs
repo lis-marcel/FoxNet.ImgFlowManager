@@ -53,7 +53,12 @@ namespace FoxSky.Img.Service
 
                 if (response.IsSuccessStatusCode)
                 {
-                    fullLocationName = ExtractCityAndCountry(await response.Content.ReadAsStringAsync());
+                    sb.Clear();
+
+                    sb.Append('_');
+                    sb.Append(ExtractCityAndCountry(await response.Content.ReadAsStringAsync()));
+
+                    fullLocationName = sb.ToString();
 
                     locationCache.AddLocationToCache(location, fullLocationName);
                 }

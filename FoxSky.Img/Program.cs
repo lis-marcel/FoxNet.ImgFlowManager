@@ -23,9 +23,9 @@ class Program
             return; 
         }
 
-        if (args.Length < 5)
+        if (args.Length < 3)
         {
-            Logger.LogError("Invalid params.");
+            Logger.LogError("Invalid base params.");
             Environment.ExitCode = 1;
             return;
         }
@@ -33,8 +33,18 @@ class Program
         imageProcessor.PicsOwnerSurname = args[0];
         imageProcessor.SrcPath = args[1];
         imageProcessor.DstRootPath = args[2];
-        imageProcessor.UserEmail = args[3];
-        imageProcessor.Radius = args[4];
+
+        imageProcessor.AddGeolocationFlag = args.Contains("-g");
+
+        if (imageProcessor.AddGeolocationFlag && args.Length < 5)
+        {
+            Logger.LogError("Invalid geolocation params.");
+            Environment.ExitCode = 1;
+            return;
+        }
+
+        imageProcessor.UserEmail = args.Length > 4 ? args[4] : null;
+        imageProcessor.Radius = args.Length > 5 ? args[5] : null;
 
         var resSuccess = Task.Run(async () => await imageProcessor.ProcessImages()).GetAwaiter().GetResult();
         Environment.ExitCode = resSuccess ? 0 : 1;

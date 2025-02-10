@@ -105,10 +105,15 @@ namespace FoxSky.Img.Processors
 
         private async Task<string> PrepareNewFileName(string srcFileName, string dstPath, DateTime? photoDate, ImageProcessor processor)
         {
-            var place = TextUtils.RemoveSpaces(await geolocationService.ReverseGeolocationRequestTask(srcFileName, processor.UserEmail, processor.Radius));
+            string location = string.Empty;
+
+            if (processor.AddGeolocationFlag)
+            {
+                location = TextUtils.RemoveSpaces(await geolocationService.ReverseGeolocationRequestTask(srcFileName, processor.UserEmail, processor.Radius));
+            }
 
             var fileName = processor.PicsOwnerSurname + "_" + (photoDate.HasValue ?
-                photoDate.Value.ToString("yyyy-MM-dd HH-mm-ss") + "_" + place :
+                photoDate.Value.ToString("yyyy-MM-dd HH-mm-ss") + location :
                 Path.GetFileNameWithoutExtension(srcFileName));
 
             var extension = Path.GetExtension(srcFileName).Trim();
@@ -120,7 +125,7 @@ namespace FoxSky.Img.Processors
             }
 
             var newFileName = Path.Combine(dstPath, fileName) + extension;
-            int i = 1;
+            int fileDuplicatesCounter = 1;
 
             while (File.Exists(newFileName))
             {
@@ -128,8 +133,8 @@ namespace FoxSky.Img.Processors
 
                 if (!differs) break;
 
-                newFileName = Path.Combine(dstPath, $"{fileName}_{i}") + extension;
-                i++;
+                newFileName = Path.Combine(dstPath, $"{fileName}_{fileDuplicatesCounter}") + extension;
+                fileDuplicatesCounter++;
             }
 
             return newFileName;
