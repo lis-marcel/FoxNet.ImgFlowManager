@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Linq;
 using System;
+using System.Text;
 
 namespace FoxSky.Img.Processors
 {
@@ -106,15 +107,20 @@ namespace FoxSky.Img.Processors
         private async Task<string> PrepareNewFileName(string srcFileName, string dstPath, DateTime? photoDate, ImageProcessor processor)
         {
             string location = string.Empty;
+            StringBuilder sb = new();
 
             if (processor.AddGeolocationFlag)
             {
                 location = TextUtils.RemoveSpaces(await geolocationService.ReverseGeolocationRequestTask(srcFileName, processor.UserEmail, processor.Radius));
             }
 
-            var fileName = processor.PicsOwnerSurname + "_" + (photoDate.HasValue ?
+            sb.Append(processor.PicsOwnerSurname);
+            sb.Append("_");
+            sb.Append(photoDate.HasValue ?
                 photoDate.Value.ToString("yyyy-MM-dd HH-mm-ss") + location :
                 Path.GetFileNameWithoutExtension(srcFileName));
+
+            string fileName = sb.ToString();
 
             var extension = Path.GetExtension(srcFileName).Trim();
 
