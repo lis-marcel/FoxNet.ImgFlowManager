@@ -16,15 +16,16 @@ namespace FoxSky.Img.Processors
         public string? PicsOwnerSurname { get; set; }
         public string? SrcPath { get; set; }
         public string? DstRootPath { get; set; }
-        public bool AddGeolocationFlag { get; set; }
+        public bool GeolocationFlag { get; set; }
         public string? UserEmail { get; set; }
         public string? Radius { get; set; }
         public Mode Mode { get; set; }
 
-        public ImageProcessor(FileHandler fileHandler, GeolocationService geolocationService)
+        public ImageProcessor(FileHandler fileHandler, GeolocationService geolocationService, Mode mode)
         {
             this.fileHandler = fileHandler;
             this.geolocationService = geolocationService;
+            this.Mode = mode;
         }
 
         public async Task<bool> ProcessImages()

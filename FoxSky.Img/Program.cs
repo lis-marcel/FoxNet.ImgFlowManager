@@ -1,4 +1,5 @@
-﻿using FoxSky.Img.Processors;
+﻿using FoxSky.Img.FileProcessors;
+using FoxSky.Img.Processors;
 using FoxSky.Img.Service;
 using FoxSky.Img.Utilities;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,11 +17,19 @@ class Program
 
         var imageProcessor = serviceProvider.GetService<ImageProcessor>();
 
-        if (imageProcessor == null ) 
-        { 
-            Logger.LogError("Service build failed."); 
-            Environment.ExitCode = 1; 
-            return; 
+        SetupEnvironment(args, imageProcessor!);
+
+        var resSuccess = Task.Run(async () => await imageProcessor!.ProcessImages()).GetAwaiter().GetResult();
+        Environment.ExitCode = resSuccess ? 0 : 1;
+    }
+
+    private static void SetupEnvironment(string[] args, ImageProcessor imageProcessor)
+    {
+        if (imageProcessor == null)
+        {
+            Logger.LogError("Service build failed.");
+            Environment.ExitCode = 1;
+            return;
         }
 
         if (args.Length < 3)
@@ -34,9 +43,17 @@ class Program
         imageProcessor.SrcPath = args[1];
         imageProcessor.DstRootPath = args[2];
 
-        imageProcessor.AddGeolocationFlag = args.Contains("-g");
+        var mode = ModeExtenstions.GetModeString(args[3]);
+        if (mode == null)
+        {
+            Logger.LogError($"Invalid mode: {mode}");
+            Environment.ExitCode = 1;
+            return;
+        }
 
-        if (imageProcessor.AddGeolocationFlag && args.Length < 5)
+        imageProcessor.GeolocationFlag = args.Contains("-g");
+
+        if (imageProcessor.GeolocationFlag && args.Length < 6)
         {
             Logger.LogError("Invalid geolocation params.");
             Environment.ExitCode = 1;
@@ -45,8 +62,5 @@ class Program
 
         imageProcessor.UserEmail = args.Length > 4 ? args[4] : null;
         imageProcessor.Radius = args.Length > 5 ? args[5] : null;
-
-        var resSuccess = Task.Run(async () => await imageProcessor.ProcessImages()).GetAwaiter().GetResult();
-        Environment.ExitCode = resSuccess ? 0 : 1;
     }
 }

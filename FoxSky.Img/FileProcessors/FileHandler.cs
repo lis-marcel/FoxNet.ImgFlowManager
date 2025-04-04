@@ -20,12 +20,13 @@ namespace FoxSky.Img.Processors
             this.geolocationService = geolocationService;
         }
 
+        // TODO - remove this switch statement 
         public async Task<bool> ProcessImageFile(string srcFilePath, ImageProcessor processor)
         {
             try
             {
                 var photoDateTime = ExtractPhotoDateFromExif(srcFilePath);
-                var dstPath = PrepareDstDir(photoDateTime, processor.DstRootPath);
+                var dstPath = PrepareDstDir(photoDateTime, processor.DstRootPath!);
                 var dstFilePath = await PrepareNewFileName(srcFilePath, dstPath, photoDateTime, processor);
 
                 switch (processor.Mode)
@@ -37,9 +38,6 @@ namespace FoxSky.Img.Processors
                     case Mode.Copy:
                         File.Copy(srcFilePath, dstFilePath, true);
                         break;
-
-                    default:
-                        throw new ArgumentException($"Unsupported mode {processor.Mode}");
                 }
 
                 Logger.LogSuccess($"{srcFilePath} → {dstFilePath}");
@@ -109,9 +107,9 @@ namespace FoxSky.Img.Processors
             string location = string.Empty;
             StringBuilder sb = new();
 
-            if (processor.AddGeolocationFlag)
+            if (processor.GeolocationFlag)
             {
-                location = TextUtils.RemoveSpaces(await geolocationService.ReverseGeolocationRequestTask(srcFileName, processor.UserEmail, processor.Radius));
+                location = TextUtils.RemoveSpaces(await geolocationService.ReverseGeolocationRequestTask(srcFileName, processor.UserEmail!, processor.Radius!));
             }
 
             sb.Append(processor.PicsOwnerSurname);

@@ -1,13 +1,10 @@
 ﻿using FoxSky.Img.Utilities;
-using MetadataExtractor.Formats.Exif;
+using GoogleApi.Entities.Common;
 using MetadataExtractor;
+using MetadataExtractor.Formats.Exif;
 using Newtonsoft.Json.Linq;
 using System.Globalization;
 using System.Text;
-using GoogleApi.Entities.Common;
-using System.Device.Location;
-using System.Net.Http;
-using System.Threading.Tasks;
 
 namespace FoxSky.Img.Service
 {
