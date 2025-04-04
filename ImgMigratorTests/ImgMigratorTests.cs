@@ -1,7 +1,10 @@
-using FoxSky.Img;
+using FoxSky.Img.FileProcessors;
+using FoxSky.Img.Processors;
+using FoxSky.Img.Service;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace ImgMigratorTests
 {
@@ -18,100 +21,239 @@ namespace ImgMigratorTests
         private const int VALID_IMAGES_COUNT = 6;
         #endregion
 
-        #region Test methods
+        private GeolocationService _geolocationService;
+        private FileHandler _fileHandler;
+        private LocationCache _locationCache;
 
-        //[TestCleanup]
         [TestInitialize]
         public void InitTest()
         {
+            // Arrange - Setup for all tests
             if (Directory.Exists(DST_FILE_PATH))
                 Directory.Delete(DST_FILE_PATH, true);
+
+            _locationCache = new LocationCache();
+            _geolocationService = new GeolocationService(_locationCache);
+            _fileHandler = new FileHandler(_geolocationService);
         }
 
         [TestMethod]
         [DataRow(CORRECT_INPUT_FILE_PATH, DST_FILE_PATH)]
-        public void UnpositiveProcessProcessImageFileTest(string correctSrcFile, string incorrectDstFilePath)
+        public async Task Test_ProcessImageFile_Fail(string correctSrcFile, string incorrectDstFilePath)
         {
-            var imgMigartor = new ImgMigrator() { SrcPath = correctSrcFile, DstRootPath = incorrectDstFilePath, Mode = Mode.Copy };
-            imgMigartor.ProcessImageFile(correctSrcFile);
+            // Arrange
+            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, Mode.Copy)
+            {
+                SrcPath = correctSrcFile,
+                DstRootPath = incorrectDstFilePath
+            };
+
+            // Act
+            var result = await _fileHandler.ProcessImageFile(correctSrcFile, imageProcessor);
+
+            // Assert
+            Assert.IsFalse(result, "ProcessImageFile should fail when processing a directory as a file");
         }
 
         [TestMethod]
         [DataRow(FILE_1, DST_FILE_PATH)]
-        public void PositiveProcessImageFileTest(string correctSrcFilePath, string dstFilePath)
+        public async Task Test_ProcessImageFile_Correct(string correctSrcFilePath, string dstFilePath)
         {
-            var imgMigrator = new ImgMigrator() { DstRootPath = dstFilePath, Mode = Mode.Copy };
-            Assert.IsTrue(imgMigrator.ProcessImageFile(correctSrcFilePath));
-            Assert.IsTrue(imgMigrator.ProcessImageFile(correctSrcFilePath));
-            Assert.IsTrue(imgMigrator.ProcessImageFile(correctSrcFilePath));
+            // Arrange
+            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, Mode.Copy)
+            {
+                DstRootPath = dstFilePath,
+                PicsOwnerSurname = "Test"
+            };
 
-            Assert.IsTrue(File.Exists(Path.Combine(dstFilePath, @"2019\20190218_161133.jpg")));
+            // Act
+            var result1 = await _fileHandler.ProcessImageFile(correctSrcFilePath, imageProcessor);
+            var result2 = await _fileHandler.ProcessImageFile(correctSrcFilePath, imageProcessor);
+            var result3 = await _fileHandler.ProcessImageFile(correctSrcFilePath, imageProcessor);
 
-            Assert.IsFalse(File.Exists(Path.Combine(dstFilePath, @"2019\20190218_161133_0.jpg")));
-            Assert.IsFalse(File.Exists(Path.Combine(dstFilePath, @"2019\20190218_161133_1.jpg")));
-            Assert.IsFalse(File.Exists(Path.Combine(dstFilePath, @"2019\20190218_161133_2.jpg")));
+            // Assert
+            Assert.IsTrue(result1, "First file processing should succeed");
+            Assert.IsTrue(result2, "Second file processing should succeed");
+            Assert.IsTrue(result3, "Third file processing should succeed");
+
+            Assert.IsTrue(File.Exists(Path.Combine(dstFilePath, @"2019\Test_2019-02-18 16-11-33.jpg")),
+                "Expected file should exist");
+
+            Assert.IsFalse(File.Exists(Path.Combine(dstFilePath, @"2019\Test_2019-02-18 16-11-33_0.jpg")),
+                "Duplicate file _0 should not exist");
+            Assert.IsFalse(File.Exists(Path.Combine(dstFilePath, @"2019\Test_2019-02-18 16-11-33_1.jpg")),
+                "Duplicate file _1 should not exist");
+            Assert.IsFalse(File.Exists(Path.Combine(dstFilePath, @"2019\Test_2019-02-18 16-11-33_2.jpg")),
+                "Duplicate file _2 should not exist");
         }
 
         [TestMethod]
-        public void PositiveProcessImageFilePlusTest()
+        public async Task Test_ProcessImageFilePlusByte_Correct()
         {
-            var imgMigrator = new ImgMigrator() { DstRootPath = DST_FILE_PATH, Mode = Mode.Copy };
-            Assert.IsTrue(imgMigrator.ProcessImageFile(FILE_1));
-            Assert.IsTrue(imgMigrator.ProcessImageFile(FILE_1_PLUS));
+            // Arrange
+            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, Mode.Copy)
+            {
+                DstRootPath = DST_FILE_PATH,
+                PicsOwnerSurname = "Test"
+            };
 
-            Assert.IsTrue(File.Exists(Path.Combine(imgMigrator.DstRootPath, @"2019\20190218_161133.jpg")));
-            Assert.IsTrue(File.Exists(Path.Combine(imgMigrator.DstRootPath, @"2019\20190218_161133_1.jpg")));
+            // Act
+            var result1 = await _fileHandler.ProcessImageFile(FILE_1, imageProcessor);
+            var result2 = await _fileHandler.ProcessImageFile(FILE_1_PLUS, imageProcessor);
 
-            Assert.IsFalse(File.Exists(Path.Combine(imgMigrator.DstRootPath, @"2019\20190218_161133_0.jpg")));
-            Assert.IsFalse(File.Exists(Path.Combine(imgMigrator.DstRootPath, @"2019\20190218_161133_2.jpg")));
+            // Assert
+            Assert.IsTrue(result1, "First file processing should succeed");
+            Assert.IsTrue(result2, "Second file processing should succeed");
+
+            Assert.IsTrue(File.Exists(Path.Combine(DST_FILE_PATH, @"2019\Test_2019-02-18 16-11-33.jpg")),
+                "Original file should exist");
+            Assert.IsTrue(File.Exists(Path.Combine(DST_FILE_PATH, @"2019\Test_2019-02-18 16-11-33_1.jpg")),
+                "Different content duplicate should exist with _1 suffix");
+
+            Assert.IsFalse(File.Exists(Path.Combine(DST_FILE_PATH, @"2019\Test_2019-02-18 16-11-33_0.jpg")),
+                "File with _0 suffix should not exist");
+            Assert.IsFalse(File.Exists(Path.Combine(DST_FILE_PATH, @"2019\Test_2019-02-18 16-11-33_2.jpg")),
+                "File with _2 suffix should not exist");
         }
 
         [TestMethod]
         [DataRow(TXT_FILE, DST_FILE_PATH)]
-        public void WrongExtensionTest(string incorrectSrcFilePath, string dstFilePath)
+        public async Task Test_WrongExtension_Fail(string incorrectSrcFilePath, string dstFilePath)
         {
-            var imgMigrator = new ImgMigrator() { SrcPath = incorrectSrcFilePath, DstRootPath = dstFilePath, Mode = Mode.Copy };
-            Assert.IsFalse(imgMigrator.ProcessImageFile(incorrectSrcFilePath));
+            // Arrange
+            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, Mode.Copy)
+            {
+                SrcPath = incorrectSrcFilePath,
+                DstRootPath = dstFilePath
+            };
+
+            // Act
+            var result = await _fileHandler.ProcessImageFile(incorrectSrcFilePath, imageProcessor);
+
+            // Assert
+            Assert.IsFalse(result);
         }
 
         [TestMethod]
         [DataRow(CORRECT_INPUT_FILE_PATH, DST_FILE_PATH)]
-        public void PositiveProcessImagesFileTest(string correctSrcFilePath, string dstFilePath)
+        public async Task Test_ProcessImagesFile_Correct(string correctSrcFilePath, string dstFilePath)
         {
-            var imgMigrator = new ImgMigrator() { SrcPath = correctSrcFilePath, DstRootPath = dstFilePath, Mode = Mode.Copy };
-            Assert.IsTrue(imgMigrator.ProcessImages());
+            // Arrange
+            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, Mode.Copy)
+            {
+                SrcPath = correctSrcFilePath,
+                DstRootPath = dstFilePath,
+                PicsOwnerSurname = "Test"
+            };
+
+            // Act
+            var result = await imageProcessor.ProcessImages();
+
+            // Assert
+            Assert.IsTrue(result, "Processing images should succeed with valid directory");
         }
 
         [TestMethod]
         [DataRow(INCORRECT_INPUT_FILE_PATH, DST_FILE_PATH)]
-        public void UnpositiveProcessImageTest(string incorrectSrcFilePath, string dstFilePath)
+        public async Task Test_ProcessImage_Fail(string incorrectSrcFilePath, string dstFilePath)
         {
-            var imgMigrator = new ImgMigrator() { SrcPath = incorrectSrcFilePath, DstRootPath = dstFilePath, Mode = Mode.Copy };
-            Assert.IsFalse(imgMigrator.ProcessImages());
+            // Arrange
+            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, Mode.Copy)
+            {
+                SrcPath = incorrectSrcFilePath,
+                DstRootPath = dstFilePath
+            };
+
+            // Act
+            var result = await imageProcessor.ProcessImages();
+
+            // Assert
+            Assert.IsFalse(result, "Processing images should fail with invalid source path");
         }
 
         [TestMethod]
         [DataRow(CORRECT_INPUT_FILE_PATH, DST_FILE_PATH)]
-        public void PositiveProcessDirectoryTest(string correctSrcFilePath, string dstFilePath)
+        public async Task Test_ProcessDirectory_Correct(string correctSrcFilePath, string dstFilePath)
         {
-            var imgMigrator = new ImgMigrator() { SrcPath = correctSrcFilePath, DstRootPath = dstFilePath, Mode = Mode.Copy };
-            Assert.IsTrue(imgMigrator.ProcessDirectory(correctSrcFilePath));
+            // Arrange
+            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, Mode.Copy)
+            {
+                SrcPath = correctSrcFilePath,
+                DstRootPath = dstFilePath,
+                PicsOwnerSurname = "Test"
+            };
 
-            // TODO check all expected files exists
-            Assert.AreEqual(VALID_IMAGES_COUNT, Directory.EnumerateFiles(dstFilePath, "*.jpg", SearchOption.AllDirectories).Count());
+            // Act
+            var result = await _fileHandler.ProcessDirectory(correctSrcFilePath, imageProcessor);
+
+            // Assert
+            Assert.IsTrue(result, "Processing directory should succeed with valid directory");
+            Assert.AreEqual(VALID_IMAGES_COUNT,
+                Directory.EnumerateFiles(dstFilePath, "*.jpg", SearchOption.AllDirectories).Count(),
+                "Expected number of processed files should match");
         }
 
         [TestMethod]
         [DataRow(INCORRECT_INPUT_FILE_PATH, DST_FILE_PATH)]
         [ExpectedException(typeof(DirectoryNotFoundException))]
-        public void UnpositiveProcessDirectoryIncorrectSrcPathTest(string incorrectSrcFile, string dstFilePath)
+        public async Task Test_ProcessDirectoryIncorrectSrcPath_Fail(string incorrectSrcFile, string dstFilePath)
         {
-            var imgMigartor = new ImgMigrator() { SrcPath = incorrectSrcFile, DstRootPath = dstFilePath, Mode = Mode.Copy };
-            imgMigartor.ProcessDirectory(incorrectSrcFile);
+            // Arrange
+            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, Mode.Copy)
+            {
+                SrcPath = incorrectSrcFile,
+                DstRootPath = dstFilePath
+            };
 
-            Assert.AreEqual(0, Directory.EnumerateFiles(dstFilePath, "*.*", SearchOption.AllDirectories).Count());
+            // Act
+            await _fileHandler.ProcessDirectory(incorrectSrcFile, imageProcessor);
+
+            // Assert
+            // Exception is expected, handled by ExpectedException attribute
+            Assert.AreEqual(0,
+                Directory.EnumerateFiles(dstFilePath, "*.*", SearchOption.AllDirectories).Count(),
+                "No files should be processed with invalid source directory");
         }
 
-        #endregion
+        // Geolocation tests are commented out as they require external service
+        //[TestMethod]
+        //public async Task GeolocationFlag_When_Enabled_Should_Include_Location_In_Filename()
+        //{
+        //    // Arrange
+        //    var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, Mode.Copy)
+        //    {
+        //        DstRootPath = DST_FILE_PATH,
+        //        PicsOwnerSurname = "Test",
+        //        GeolocationFlag = true,
+        //        UserEmail = "test@example.com",
+        //        Radius = "100"
+        //    };
+
+        //    // Act
+        //    var result = await _fileHandler.ProcessImageFile(FILE_1, imageProcessor);
+
+        //    // Assert
+        //    Assert.IsTrue(result, "Processing with geolocation flag should succeed");
+        //}
+
+        //[TestMethod]
+        //public async Task GeolocationFlag_When_Disabled_Should_Not_Include_Location_In_Filename()
+        //{
+        //    // Arrange
+        //    var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, Mode.Copy)
+        //    {
+        //        DstRootPath = DST_FILE_PATH,
+        //        PicsOwnerSurname = "Test",
+        //        GeolocationFlag = false
+        //    };
+
+        //    // Act
+        //    var result = await _fileHandler.ProcessImageFile(FILE_1, imageProcessor);
+
+        //    // Assert
+        //    Assert.IsTrue(result, "Processing without geolocation flag should succeed");
+        //    Assert.IsTrue(File.Exists(Path.Combine(DST_FILE_PATH, @"2019\Test_2019-02-18 16-11-33.jpg")),
+        //        "Filename should not include location data");
+        //}
     }
 }

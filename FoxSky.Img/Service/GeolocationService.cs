@@ -1,13 +1,10 @@
 ﻿using FoxSky.Img.Utilities;
-using MetadataExtractor.Formats.Exif;
+using GoogleApi.Entities.Common;
 using MetadataExtractor;
+using MetadataExtractor.Formats.Exif;
 using Newtonsoft.Json.Linq;
 using System.Globalization;
 using System.Text;
-using GoogleApi.Entities.Common;
-using System.Device.Location;
-using System.Net.Http;
-using System.Threading.Tasks;
 
 namespace FoxSky.Img.Service
 {
@@ -45,7 +42,7 @@ namespace FoxSky.Img.Service
                     $"format=json&email={userEmail}" +
                     $"&lat={location.Latitude.ToString(CultureInfo.InvariantCulture)}" +
                     $"&lon={location.Longitude.ToString(CultureInfo.InvariantCulture)}" +
-                    $"&zoom=10&addressdetails=1&accept-language=en");
+                    $"&zoom=13&addressdetails=1&accept-language=en");
 
                 string requestUri = sb.ToString();
 
@@ -53,7 +50,12 @@ namespace FoxSky.Img.Service
 
                 if (response.IsSuccessStatusCode)
                 {
-                    fullLocationName = ExtractCityAndCountry(await response.Content.ReadAsStringAsync());
+                    sb.Clear();
+
+                    sb.Append('_');
+                    sb.Append(ExtractCityAndCountry(await response.Content.ReadAsStringAsync()));
+
+                    fullLocationName = sb.ToString();
 
                     locationCache.AddLocationToCache(location, fullLocationName);
                 }
@@ -75,9 +77,11 @@ namespace FoxSky.Img.Service
 
             if (address != null)
             {
-                var city = address["city"]?.ToString() ??
-                       address["town"]?.ToString() ??
-                       address["village"]?.ToString();
+                var city = address["village"]?.ToString() ??
+                           address["city"]?.ToString() ??
+                           address["town"]?.ToString() ??
+                           address["municipality"]?.ToString() ??
+                           address["county"]?.ToString();
 
                 sb.Append(city);
 

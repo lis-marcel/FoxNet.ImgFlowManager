@@ -1,7 +1,5 @@
-﻿using GoogleApi.Entities.Common;
-using System.Collections.Generic;
-using System.Device.Location;
-using System.Linq;
+﻿using GeoCoordinatePortable;
+using GoogleApi.Entities.Common;
 
 namespace FoxSky.Img.Service
 {
@@ -26,6 +24,7 @@ namespace FoxSky.Img.Service
         {
             var coord1 = new GeoCoordinate(loc1.Latitude, loc1.Longitude);
             var coord2 = new GeoCoordinate(loc2.Latitude, loc2.Longitude);
+
             return coord1.GetDistanceTo(coord2) <= distanceInMeters;
         }
     }

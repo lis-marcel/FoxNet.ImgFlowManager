@@ -1,8 +1,13 @@
 ﻿using FoxSky.Img.Service;
 using FoxSky.Img.Utilities;
+using FoxSky.Img.FileProcessors;
 using MetadataExtractor.Formats.Exif;
 using MetadataExtractor;
-using FoxSky.Img.FileProcessors;
+using System.Threading.Tasks;
+using System.IO;
+using System.Linq;
+using System;
+using System.Text;
 
 namespace FoxSky.Img.Processors
 {
@@ -15,12 +20,13 @@ namespace FoxSky.Img.Processors
             this.geolocationService = geolocationService;
         }
 
+        // TODO - remove this switch statement 
         public async Task<bool> ProcessImageFile(string srcFilePath, ImageProcessor processor)
         {
             try
             {
                 var photoDateTime = ExtractPhotoDateFromExif(srcFilePath);
-                var dstPath = PrepareDstDir(photoDateTime, processor.DstRootPath);
+                var dstPath = PrepareDstDir(photoDateTime, processor.DstRootPath!);
                 var dstFilePath = await PrepareNewFileName(srcFilePath, dstPath, photoDateTime, processor);
 
                 switch (processor.Mode)
@@ -32,9 +38,6 @@ namespace FoxSky.Img.Processors
                     case Mode.Copy:
                         File.Copy(srcFilePath, dstFilePath, true);
                         break;
-
-                    default:
-                        throw new ArgumentException($"Unsupported mode {processor.Mode}");
                 }
 
                 Logger.LogSuccess($"{srcFilePath} → {dstFilePath}");
@@ -51,8 +54,9 @@ namespace FoxSky.Img.Processors
         {
             Logger.LogSuccess($"Processing: {targetDirectory}");
 
-            var files = System.IO.Directory.EnumerateFiles(targetDirectory, "*.jpg", SearchOption.AllDirectories)
-                .Union(System.IO.Directory.EnumerateFiles(targetDirectory, "*.jpeg", SearchOption.AllDirectories));
+            var extensions = FileExtensionExtenstions.GetExtensions();
+            var files = extensions.SelectMany(ext => 
+                System.IO.Directory.EnumerateFiles(targetDirectory, "*" + ext, SearchOption.AllDirectories));
 
             var filesCount = files.Count();
             int processed = 0;
@@ -84,7 +88,7 @@ namespace FoxSky.Img.Processors
             return success;
         }
 
-        private string PrepareDstDir(DateTime? photoDate, string dstRootPath)
+        private static string PrepareDstDir(DateTime? photoDate, string dstRootPath)
         {
             var dstRoot = photoDate.HasValue ?
                 Path.Combine(dstRootPath, photoDate.Value.Year.ToString()) :
@@ -100,15 +104,32 @@ namespace FoxSky.Img.Processors
 
         private async Task<string> PrepareNewFileName(string srcFileName, string dstPath, DateTime? photoDate, ImageProcessor processor)
         {
-            var place = TextUtils.RemoveSpaces(await geolocationService.ReverseGeolocationRequestTask(srcFileName, processor.UserEmail, processor.Radius));
+            string location = string.Empty;
+            StringBuilder sb = new();
 
-            var fileName = processor.PicsOwnerSurname + "_" + (photoDate.HasValue ?
-                photoDate.Value.ToString("yyyy-MM-dd_HH-mm-ss") + "_" + place :
+            if (processor.GeolocationFlag)
+            {
+                location = TextUtils.RemoveSpaces(await geolocationService.ReverseGeolocationRequestTask(srcFileName, processor.UserEmail!, processor.Radius!));
+            }
+
+            sb.Append(processor.PicsOwnerSurname);
+            sb.Append("_");
+            sb.Append(photoDate.HasValue ?
+                photoDate.Value.ToString("yyyy-MM-dd HH-mm-ss") + location :
                 Path.GetFileNameWithoutExtension(srcFileName));
 
+            string fileName = sb.ToString();
+
             var extension = Path.GetExtension(srcFileName).Trim();
+
+            // If the extension is .jpeg, change it to .jpg
+            if (extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
+            {
+                extension = ".jpg";
+            }
+
             var newFileName = Path.Combine(dstPath, fileName) + extension;
-            int i = 1;
+            int fileDuplicatesCounter = 1;
 
             while (File.Exists(newFileName))
             {
@@ -116,21 +137,21 @@ namespace FoxSky.Img.Processors
 
                 if (!differs) break;
 
-                newFileName = Path.Combine(dstPath, $"{fileName}_{i}") + extension;
-                i++;
+                newFileName = Path.Combine(dstPath, $"{fileName}_{fileDuplicatesCounter}") + extension;
+                fileDuplicatesCounter++;
             }
 
             return newFileName;
         }
 
-        private bool CheckFileDiffers(string srcFileName, string dstFileName)
+        private static bool CheckFileDiffers(string srcFileName, string dstFileName)
         {
             return !File.Exists(dstFileName) ||
                 new FileInfo(srcFileName).Length != new FileInfo(dstFileName).Length ||
                 !SameBinaryContent(srcFileName, dstFileName);
         }
 
-        private bool SameBinaryContent(string fileName1, string fileName2)
+        private static bool SameBinaryContent(string fileName1, string fileName2)
         {
             int file1byte;
             int file2byte;
@@ -158,7 +179,7 @@ namespace FoxSky.Img.Processors
             return true;
         }
 
-        private DateTime? ExtractPhotoDateFromExif(string fileName)
+        private static DateTime? ExtractPhotoDateFromExif(string fileName)
         {
             DateTime dateTime;
 
