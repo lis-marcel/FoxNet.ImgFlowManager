@@ -14,13 +14,19 @@ namespace FoxSky.Img.Processors
     public class FileHandler
     {
         private readonly GeolocationService geolocationService;
+        private readonly Dictionary<Mode, Action<string, string>> fileOperations;
 
         public FileHandler(GeolocationService geolocationService)
         {
             this.geolocationService = geolocationService;
+
+            fileOperations = new Dictionary<Mode, Action<string, string>>
+            {
+                { Mode.Move, (src, dst) => File.Move(src, dst, true) },
+                { Mode.Copy, (src, dst) => File.Copy(src, dst, true) }
+            };
         }
 
-        // TODO - remove this switch statement 
         public async Task<bool> ProcessImageFile(string srcFilePath, ImageProcessor processor)
         {
             try
@@ -29,15 +35,14 @@ namespace FoxSky.Img.Processors
                 var dstPath = PrepareDstDir(photoDateTime, processor.DstRootPath!);
                 var dstFilePath = await PrepareNewFileName(srcFilePath, dstPath, photoDateTime, processor);
 
-                switch (processor.Mode)
+                if (fileOperations.TryGetValue(processor.Mode, out var fileOperation))
                 {
-                    case Mode.Move:
-                        File.Move(srcFilePath, dstFilePath, true);
-                        break;
-
-                    case Mode.Copy:
-                        File.Copy(srcFilePath, dstFilePath, true);
-                        break;
+                    fileOperation(srcFilePath, dstFilePath);
+                }
+                else
+                {
+                    Logger.LogError($"Unsupported mode: {processor.Mode}");
+                    return false;
                 }
 
                 Logger.LogSuccess($"{srcFilePath} → {dstFilePath}");
