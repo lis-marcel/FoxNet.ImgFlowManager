@@ -14,8 +14,8 @@ class Program
             .AddSingleton<ImageProcessor>(provider => new ImageProcessor(
                 provider.GetRequiredService<FileHandler>(),
                 provider.GetRequiredService<GeolocationService>(),
-            Mode.Copy
-        ))
+                Mode.Copy
+            ))
             .BuildServiceProvider();
 
         var imageProcessor = serviceProvider.GetService<ImageProcessor>();
