@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FoxSky.Img.FileProcessors
+﻿namespace FoxSky.Img.FileProcessors
 {
     public enum Mode
     {
@@ -16,8 +10,8 @@ namespace FoxSky.Img.FileProcessors
     {
         private static Dictionary<string, Mode> modesMap = new()
         {
-            { "1", Mode.Copy },
-            { "2", Mode.Move }
+            { "Copy", Mode.Copy },
+            { "Move", Mode.Move }
         };
 
         public static Mode? GetModeString(string modeNumber)

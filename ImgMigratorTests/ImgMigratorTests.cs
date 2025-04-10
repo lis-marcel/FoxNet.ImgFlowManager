@@ -1,5 +1,4 @@
 using FoxSky.Img.FileProcessors;
-using FoxSky.Img.Processors;
 using FoxSky.Img.Service;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.IO;

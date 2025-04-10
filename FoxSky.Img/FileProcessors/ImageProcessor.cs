@@ -1,12 +1,7 @@
-﻿using FoxSky.Img.FileProcessors;
-using FoxSky.Img.Service;
+﻿using FoxSky.Img.Service;
 using FoxSky.Img.Utilities;
-using MetadataExtractor;
-using MetadataExtractor.Formats.Exif;
-using System.Globalization;
-using System.Text;
 
-namespace FoxSky.Img.Processors
+namespace FoxSky.Img.FileProcessors
 {
     public class ImageProcessor
     {
@@ -25,7 +20,7 @@ namespace FoxSky.Img.Processors
         {
             this.fileHandler = fileHandler;
             this.geolocationService = geolocationService;
-            this.Mode = mode;
+            Mode = mode;
         }
 
         public async Task<bool> ProcessImages()

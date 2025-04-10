@@ -1,30 +1,23 @@
 ﻿using FoxSky.Img.Service;
 using FoxSky.Img.Utilities;
-using FoxSky.Img.FileProcessors;
-using MetadataExtractor.Formats.Exif;
 using MetadataExtractor;
-using System.Threading.Tasks;
-using System.IO;
-using System.Linq;
-using System;
+using MetadataExtractor.Formats.Exif;
 using System.Text;
 
-namespace FoxSky.Img.Processors
+namespace FoxSky.Img.FileProcessors
 {
     public class FileHandler
     {
         private readonly GeolocationService geolocationService;
-        private readonly Dictionary<Mode, Action<string, string>> fileOperations;
+        private static readonly Dictionary<Mode, Action<string, string>> fileOperations = new()
+        {
+            { Mode.Copy, (src, dst) => File.Copy(src, dst, true) },
+            { Mode.Move, (src, dst) => File.Move(src, dst, true) },
+        };
 
         public FileHandler(GeolocationService geolocationService)
         {
             this.geolocationService = geolocationService;
-
-            fileOperations = new Dictionary<Mode, Action<string, string>>
-            {
-                { Mode.Move, (src, dst) => File.Move(src, dst, true) },
-                { Mode.Copy, (src, dst) => File.Copy(src, dst, true) }
-            };
         }
 
         public async Task<bool> ProcessImageFile(string srcFilePath, ImageProcessor processor)
@@ -45,7 +38,7 @@ namespace FoxSky.Img.Processors
                     return false;
                 }
 
-                Logger.LogSuccess($"{srcFilePath} → {dstFilePath}");
+                Logger.LogSuccess($"{srcFilePath} -> {dstFilePath}");
                 return true;
             }
             catch (Exception ex)
@@ -118,7 +111,7 @@ namespace FoxSky.Img.Processors
             }
 
             sb.Append(processor.PicsOwnerSurname);
-            sb.Append("_");
+            sb.Append('_');
             sb.Append(photoDate.HasValue ?
                 photoDate.Value.ToString("yyyy-MM-dd HH-mm-ss") + location :
                 Path.GetFileNameWithoutExtension(srcFileName));
