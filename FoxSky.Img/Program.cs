@@ -1,4 +1,5 @@
-﻿using FoxSky.Img.FileProcessors;
+﻿using CommandLine;
+using FoxSky.Img.FileProcessors;
 using FoxSky.Img.Service;
 using FoxSky.Img.Utilities;
 using Microsoft.Extensions.DependencyInjection;
@@ -7,6 +8,17 @@ class Program
 {
     static void Main(string[] args)
     {
+        var cmdOptions = new CmdOptions();
+
+        Parser.Default.ParseArguments<CmdOptions>(args)
+            .WithParsed(options => cmdOptions = options)
+            .WithNotParsed(errors => Logger.LogError("Invalid arguments provided."));
+
+        if (cmdOptions.ValidateAndPrompt() == (int)EnviromentExitCodes.ExitCodes.Error)
+        {
+            Environment.ExitCode = (int)EnviromentExitCodes.ExitCodes.Error;
+        }
+
         var serviceProvider = new ServiceCollection()
             .AddSingleton<FileHandler>()
             .AddSingleton<GeolocationService>()
@@ -14,69 +26,20 @@ class Program
             .AddSingleton<ImageProcessor>(provider => new ImageProcessor(
                 provider.GetRequiredService<FileHandler>(),
                 provider.GetRequiredService<GeolocationService>(),
-                Mode.Copy
+                cmdOptions.Mode == OperationMode.Copy ? OperationMode.Copy : OperationMode.Move
             ))
             .BuildServiceProvider();
 
         var imageProcessor = serviceProvider.GetService<ImageProcessor>();
 
-        if (!SetupEnvironment(args, imageProcessor!))
-        {
-            return;
-        }
+        // Set paths from command options
+        imageProcessor!.SrcPath = cmdOptions.SrcPath;
+        imageProcessor.DstRootPath = cmdOptions.DstPath;
 
-        var resSuccess = Task.Run(async () => await imageProcessor!.ProcessImages()).GetAwaiter().GetResult();
-        Environment.ExitCode = resSuccess ? 0 : 1;
-    }
+        Logger.LogInfo($"Processing images from: {cmdOptions.SrcPath}");
+        Logger.LogInfo($"Destination path: {cmdOptions.DstPath}");
+        Logger.LogInfo($"Operation mode: {cmdOptions.Mode}");
 
-    private static bool SetupEnvironment(string[] args, ImageProcessor imageProcessor)
-    {
-        if (imageProcessor == null)
-        {
-            Logger.LogError("Service build failed.");
-            Environment.ExitCode = 1;
-            return false;
-        }
-
-        if (args.Length < 4) // Changed from 3 to 4 since mode is required
-        {
-            Logger.LogError("Invalid base params. Required: PicsOwnerSurname SrcPath DstRootPath Mode");
-            Environment.ExitCode = 1;
-            return false;
-        }
-
-        imageProcessor.PicsOwnerSurname = args[0];
-        imageProcessor.SrcPath = args[1];
-        imageProcessor.DstRootPath = args[2];
-
-        if (Enum.TryParse<Mode>(args[3], true, out var parsedMode))
-        {
-            imageProcessor.Mode = parsedMode;
-        }
-        else
-        {
-            var mode = ModeExtenstions.GetModeString(args[3]);
-            if (mode == null)
-            {
-                Logger.LogError($"Invalid mode: {args[3]}. Valid modes are: Copy, Move");
-                Environment.ExitCode = 1;
-                return false;
-            }
-            imageProcessor.Mode = mode.Value;
-        }
-
-        imageProcessor.GeolocationFlag = args.Contains("-g");
-
-        if (imageProcessor.GeolocationFlag && args.Length < 6)
-        {
-            Logger.LogError("Invalid geolocation params. Required with -g: UserEmail Radius");
-            Environment.ExitCode = 1;
-            return false;
-        }
-
-        imageProcessor.UserEmail = args.Length > 4 ? args[4] : null;
-        imageProcessor.Radius = args.Length > 5 ? args[5] : null;
-
-        return true;
+        Task.Run(async () => await imageProcessor!.Run()).GetAwaiter().GetResult();
     }
 }

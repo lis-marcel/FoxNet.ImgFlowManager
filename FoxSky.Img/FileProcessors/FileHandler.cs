@@ -9,18 +9,18 @@ namespace FoxSky.Img.FileProcessors
     public class FileHandler
     {
         private readonly GeolocationService geolocationService;
-        private static readonly Dictionary<Mode, Action<string, string>> fileOperations = new()
+        private static readonly Dictionary<OperationMode, Action<string, string>> fileOperations = new()
         {
-            { Mode.Copy, (src, dst) => File.Copy(src, dst, true) },
-            { Mode.Move, (src, dst) => File.Move(src, dst, true) },
-        };
+            { OperationMode.Copy, (src, dst) => File.Copy(src, dst, true) },
+            { OperationMode.Move, (src, dst) => File.Move(src, dst, true) },
+        };  
 
         public FileHandler(GeolocationService geolocationService)
         {
             this.geolocationService = geolocationService;
         }
 
-        public async Task<bool> ProcessImageFile(string srcFilePath, ImageProcessor processor)
+        public async Task<int> ProcessImageFile(string srcFilePath, ImageProcessor processor)
         {
             try
             {
@@ -35,55 +35,69 @@ namespace FoxSky.Img.FileProcessors
                 else
                 {
                     Logger.LogError($"Unsupported mode: {processor.Mode}");
-                    return false;
+                    return (int)EnviromentExitCodes.ExitCodes.Error;
                 }
 
                 Logger.LogSuccess($"{srcFilePath} -> {dstFilePath}");
-                return true;
+                return (int)EnviromentExitCodes.ExitCodes.Succcess;
             }
             catch (Exception ex)
             {
                 Logger.LogError($"During processing {srcFilePath} an error occurred: {ex.Message}");
-                return false;
+                return (int)EnviromentExitCodes.ExitCodes.Error;
             }
         }
 
-        public async Task<bool> ProcessDirectory(string targetDirectory, ImageProcessor processor)
+        public async Task<int> ProcessDirectory(string targetDirectory, ImageProcessor processor)
         {
+            // Check if directory exists before proceeding
+            if (!System.IO.Directory.Exists(targetDirectory))
+            {
+                Logger.LogError($"Directory not found: {targetDirectory}");
+                return (int)EnviromentExitCodes.ExitCodes.Error;
+            }
+
             Logger.LogSuccess($"Processing: {targetDirectory}");
 
-            var extensions = FileExtensionExtenstions.GetExtensions();
-            var files = extensions.SelectMany(ext => 
-                System.IO.Directory.EnumerateFiles(targetDirectory, "*" + ext, SearchOption.AllDirectories));
-
-            var filesCount = files.Count();
-            int processed = 0;
-            Logger.LogSuccess($"Found {filesCount} images.");
-
-            foreach (var fileName in files)
+            try
             {
-                if (await ProcessImageFile(fileName, processor))
+                var extensions = FileExtensionExtenstions.GetExtensions();
+                var files = extensions.SelectMany(ext =>
+                    System.IO.Directory.EnumerateFiles(targetDirectory, "*" + ext, SearchOption.AllDirectories));
+
+                var filesCount = files.Count();
+                int processed = 0;
+                Logger.LogSuccess($"Found {filesCount} images.");
+
+                foreach (var fileName in files)
                 {
-                    processed++;
+                    if (await ProcessImageFile(fileName, processor) == (int)EnviromentExitCodes.ExitCodes.Succcess)
+                    {
+                        processed++;
+                    }
                 }
-            }
 
-            var success = processed == filesCount;
+                if (filesCount == 0)
+                {
+                    Logger.LogSuccess("Nothing to do. No images found.");
+                }
+                else if (processed == filesCount)
+                {
+                    Logger.LogSuccess($"All {filesCount} files processed successfully.");
+                }
+                else
+                {
+                    Logger.LogError($"{filesCount - processed} of {filesCount} could not be processed.");
+                    return (int)EnviromentExitCodes.ExitCodes.Warninig;
+                }
 
-            if (filesCount == 0)
-            {
-                Logger.LogSuccess("Nothing to do. No images found.");
+                return (int)EnviromentExitCodes.ExitCodes.Succcess;
             }
-            else if (success)
+            catch (Exception ex)
             {
-                Logger.LogSuccess($"All {filesCount} files processed successfully.");
+                Logger.LogError($"Error processing directory {targetDirectory}: {ex.Message}");
+                return (int)EnviromentExitCodes.ExitCodes.Error;
             }
-            else
-            {
-                Logger.LogError($"{filesCount - processed} of {filesCount} could not be processed.");
-            }
-
-            return success;
         }
 
         private static string PrepareDstDir(DateTime? photoDate, string dstRootPath)

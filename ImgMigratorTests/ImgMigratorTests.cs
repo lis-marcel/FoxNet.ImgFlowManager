@@ -41,7 +41,7 @@ namespace ImgMigratorTests
         public async Task Test_ProcessImageFile_Fail(string correctSrcFile, string incorrectDstFilePath)
         {
             // Arrange
-            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, Mode.Copy)
+            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, OperationMode.Copy)
             {
                 SrcPath = correctSrcFile,
                 DstRootPath = incorrectDstFilePath
@@ -51,7 +51,7 @@ namespace ImgMigratorTests
             var result = await _fileHandler.ProcessImageFile(correctSrcFile, imageProcessor);
 
             // Assert
-            Assert.IsFalse(result, "ProcessImageFile should fail when processing a directory as a file");
+            Assert.AreEqual(EnviromentExitCodes.ExitCodes.Error, result);
         }
 
         [TestMethod]
@@ -59,7 +59,7 @@ namespace ImgMigratorTests
         public async Task Test_ProcessImageFile_Correct(string correctSrcFilePath, string dstFilePath)
         {
             // Arrange
-            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, Mode.Copy)
+            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, OperationMode.Copy)
             {
                 DstRootPath = dstFilePath,
                 PicsOwnerSurname = "Test"
@@ -71,9 +71,9 @@ namespace ImgMigratorTests
             var result3 = await _fileHandler.ProcessImageFile(correctSrcFilePath, imageProcessor);
 
             // Assert
-            Assert.IsTrue(result1, "First file processing should succeed");
-            Assert.IsTrue(result2, "Second file processing should succeed");
-            Assert.IsTrue(result3, "Third file processing should succeed");
+            Assert.AreEqual(EnviromentExitCodes.ExitCodes.Succcess, result1);
+            Assert.AreEqual(EnviromentExitCodes.ExitCodes.Succcess, result2);
+            Assert.AreEqual(EnviromentExitCodes.ExitCodes.Succcess, result3);
 
             Assert.IsTrue(File.Exists(Path.Combine(dstFilePath, @"2019\Test_2019-02-18 16-11-33.jpg")),
                 "Expected file should exist");
@@ -90,7 +90,7 @@ namespace ImgMigratorTests
         public async Task Test_ProcessImageFilePlusByte_Correct()
         {
             // Arrange
-            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, Mode.Copy)
+            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, OperationMode.Copy)
             {
                 DstRootPath = DST_FILE_PATH,
                 PicsOwnerSurname = "Test"
@@ -101,8 +101,8 @@ namespace ImgMigratorTests
             var result2 = await _fileHandler.ProcessImageFile(FILE_1_PLUS, imageProcessor);
 
             // Assert
-            Assert.IsTrue(result1, "First file processing should succeed");
-            Assert.IsTrue(result2, "Second file processing should succeed");
+            Assert.AreEqual(EnviromentExitCodes.ExitCodes.Succcess, result1);
+            Assert.AreEqual(EnviromentExitCodes.ExitCodes.Succcess, result2);
 
             Assert.IsTrue(File.Exists(Path.Combine(DST_FILE_PATH, @"2019\Test_2019-02-18 16-11-33.jpg")),
                 "Original file should exist");
@@ -120,7 +120,7 @@ namespace ImgMigratorTests
         public async Task Test_WrongExtension_Fail(string incorrectSrcFilePath, string dstFilePath)
         {
             // Arrange
-            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, Mode.Copy)
+            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, OperationMode.Copy)
             {
                 SrcPath = incorrectSrcFilePath,
                 DstRootPath = dstFilePath
@@ -130,7 +130,7 @@ namespace ImgMigratorTests
             var result = await _fileHandler.ProcessImageFile(incorrectSrcFilePath, imageProcessor);
 
             // Assert
-            Assert.IsFalse(result);
+            Assert.AreEqual(result, EnviromentExitCodes.ExitCodes.Error);
         }
 
         [TestMethod]
@@ -138,7 +138,7 @@ namespace ImgMigratorTests
         public async Task Test_ProcessImagesFile_Correct(string correctSrcFilePath, string dstFilePath)
         {
             // Arrange
-            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, Mode.Copy)
+            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, OperationMode.Copy)
             {
                 SrcPath = correctSrcFilePath,
                 DstRootPath = dstFilePath,
@@ -146,10 +146,10 @@ namespace ImgMigratorTests
             };
 
             // Act
-            var result = await imageProcessor.ProcessImages();
+            var result = await imageProcessor.Run();
 
             // Assert
-            Assert.IsTrue(result, "Processing images should succeed with valid directory");
+            Assert.AreEqual(EnviromentExitCodes.ExitCodes.Succcess, result);
         }
 
         [TestMethod]
@@ -157,17 +157,17 @@ namespace ImgMigratorTests
         public async Task Test_ProcessImage_Fail(string incorrectSrcFilePath, string dstFilePath)
         {
             // Arrange
-            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, Mode.Copy)
+            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, OperationMode.Copy)
             {
                 SrcPath = incorrectSrcFilePath,
                 DstRootPath = dstFilePath
             };
 
             // Act
-            var result = await imageProcessor.ProcessImages();
+            var result = await imageProcessor.Run();
 
             // Assert
-            Assert.IsFalse(result, "Processing images should fail with invalid source path");
+            Assert.AreEqual(EnviromentExitCodes.ExitCodes.Error, result);
         }
 
         [TestMethod]
@@ -175,7 +175,7 @@ namespace ImgMigratorTests
         public async Task Test_ProcessDirectory_Correct(string correctSrcFilePath, string dstFilePath)
         {
             // Arrange
-            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, Mode.Copy)
+            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, OperationMode.Copy)
             {
                 SrcPath = correctSrcFilePath,
                 DstRootPath = dstFilePath,
@@ -186,7 +186,7 @@ namespace ImgMigratorTests
             var result = await _fileHandler.ProcessDirectory(correctSrcFilePath, imageProcessor);
 
             // Assert
-            Assert.IsTrue(result, "Processing directory should succeed with valid directory");
+            Assert.AreEqual(EnviromentExitCodes.ExitCodes.Succcess, result);
             Assert.AreEqual(VALID_IMAGES_COUNT,
                 Directory.EnumerateFiles(dstFilePath, "*.jpg", SearchOption.AllDirectories).Count(),
                 "Expected number of processed files should match");
@@ -198,7 +198,7 @@ namespace ImgMigratorTests
         public async Task Test_ProcessDirectoryIncorrectSrcPath_Fail(string incorrectSrcFile, string dstFilePath)
         {
             // Arrange
-            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, Mode.Copy)
+            var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, OperationMode.Copy)
             {
                 SrcPath = incorrectSrcFile,
                 DstRootPath = dstFilePath

@@ -15,7 +15,7 @@ namespace FoxSky.Img.Utilities
             {
                 Console.Write($"[{DateTime.Now}]");
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.Write("Success! ");
+                Console.Write(" SUCCESS! ");
                 Console.Write($"{message}");
                 Debug.WriteLine(message);
                 Console.WriteLine();
@@ -32,7 +32,40 @@ namespace FoxSky.Img.Utilities
             {
                 Console.Write($"[{DateTime.Now}]");
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.Write("Error! ");
+                Console.Write(" ERROR! ");
+                Console.Write($"{message}");
+                Debug.WriteLine(message);
+                Console.WriteLine();
+            }
+            finally
+            {
+                Console.ResetColor();
+            }
+        }
+
+        public static void LogWarning(string message)
+        {
+            try
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.Write("WARNING! ");
+                Console.Write($"{message}");
+                Debug.WriteLine(message);
+                Console.WriteLine();
+            }
+            finally
+            {
+                Console.ResetColor();
+            }
+        }
+
+        public static void LogInfo(string message)
+        {
+            try
+            {
+                Console.Write($"[{DateTime.Now}]");
+                Console.ForegroundColor = ConsoleColor.Blue;
+                Console.Write(" INFO: ");
                 Console.Write($"{message}");
                 Debug.WriteLine(message);
                 Console.WriteLine();
