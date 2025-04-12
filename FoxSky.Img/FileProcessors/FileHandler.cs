@@ -20,50 +20,28 @@ namespace FoxSky.Img.FileProcessors
             this.geolocationService = geolocationService;
         }
 
-        public async Task<int> ProcessImageFile(string srcFilePath, ImageProcessor processor)
-        {
-            try
-            {
-                var photoDateTime = ExtractPhotoDateFromExif(srcFilePath);
-                var dstPath = PrepareDstDir(photoDateTime, processor.DstRootPath!);
-                var dstFilePath = await PrepareNewFileName(srcFilePath, dstPath, photoDateTime, processor);
-
-                if (fileOperations.TryGetValue(processor.Mode, out var fileOperation))
-                {
-                    fileOperation(srcFilePath, dstFilePath);
-                }
-                else
-                {
-                    Logger.LogError($"Unsupported mode: {processor.Mode}");
-                    return (int)EnviromentExitCodes.ExitCodes.Error;
-                }
-
-                Logger.LogSuccess($"{srcFilePath} -> {dstFilePath}");
-                return (int)EnviromentExitCodes.ExitCodes.Succcess;
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError($"During processing {srcFilePath} an error occurred: {ex.Message}");
-                return (int)EnviromentExitCodes.ExitCodes.Error;
-            }
-        }
-
-        public async Task<int> ProcessDirectory(string targetDirectory, ImageProcessor processor)
+        public async Task<int> ProcessDirectory(ImageProcessor processor)
         {
             // Check if directory exists before proceeding
-            if (!System.IO.Directory.Exists(targetDirectory))
+            if (!System.IO.Directory.Exists(processor.SrcPath))
             {
-                Logger.LogError($"Directory not found: {targetDirectory}");
+                Logger.LogError($"Directory not found: {processor.SrcPath}");
+                return (int)EnviromentExitCodes.ExitCodes.Error;
+            }
+            // Check if destination directory exists before proceeding
+            if (!System.IO.Directory.Exists(processor.DstRootPath!))
+            {
+                Logger.LogError($"Destination directory not found: {processor.DstRootPath}");
                 return (int)EnviromentExitCodes.ExitCodes.Error;
             }
 
-            Logger.LogSuccess($"Processing: {targetDirectory}");
+            Logger.LogSuccess($"Processing: {processor.SrcPath}");
 
             try
             {
                 var extensions = FileExtensionExtenstions.GetExtensions();
                 var files = extensions.SelectMany(ext =>
-                    System.IO.Directory.EnumerateFiles(targetDirectory, "*" + ext, SearchOption.AllDirectories));
+                    System.IO.Directory.EnumerateFiles(processor.SrcPath, "*" + ext, SearchOption.AllDirectories));
 
                 var filesCount = files.Count();
                 int processed = 0;
@@ -95,7 +73,35 @@ namespace FoxSky.Img.FileProcessors
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Error processing directory {targetDirectory}: {ex.Message}");
+                Logger.LogError($"Error processing directory {processor.SrcPath}: {ex.Message}");
+                return (int)EnviromentExitCodes.ExitCodes.Error;
+            }
+        }
+
+        public async Task<int> ProcessImageFile(string srcFilePath, ImageProcessor processor)
+        {
+            try
+            {
+                var photoDateTime = ExtractPhotoDateFromExif(srcFilePath);
+                var dstPath = PrepareDstDir(photoDateTime, processor.DstRootPath!);
+                var dstFilePath = await PrepareNewFileName(srcFilePath, dstPath, photoDateTime, processor);
+
+                if (fileOperations.TryGetValue(processor.Mode, out var fileOperation))
+                {
+                    fileOperation(srcFilePath, dstFilePath);
+                }
+                else
+                {
+                    Logger.LogError($"Unsupported mode: {processor.Mode}");
+                    return (int)EnviromentExitCodes.ExitCodes.Error;
+                }
+
+                Logger.LogSuccess($"{srcFilePath} -> {dstFilePath}");
+                return (int)EnviromentExitCodes.ExitCodes.Succcess;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"During processing {srcFilePath} an error occurred: {ex.Message}");
                 return (int)EnviromentExitCodes.ExitCodes.Error;
             }
         }

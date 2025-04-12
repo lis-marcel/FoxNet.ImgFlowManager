@@ -12,20 +12,23 @@ namespace FoxSky.Img.Service
 
     public class CmdOptions
     {
-        [Option('s', "source", Required = true, HelpText = "Provide source path")]
+        [Option('o', "owner", Required = true, HelpText = "Pictures owner surname.")]
+        public string OwnerSurname { get; set; } = string.Empty;
+
+        [Option('s', "source", Required = true, HelpText = "Source directory path.")]
         public string SrcPath { get; set; } = string.Empty;
 
-        [Option('d', "destination", Required = true, HelpText = "Provide destination path")]
+        [Option('d', "destination", Required = true, HelpText = "Destination directory path.")]
         public string DstPath { get; set; } = string.Empty;
 
-        [Option('m', "mode", Required = false, HelpText = "Select operation mode: Copy or Move. Copy is set as initial mode.")]
+        [Option('m', "mode", Required = false, HelpText = "Select operation mode: Copy or Move. Copy is set as primary mode.")]
         public OperationMode Mode { get; set; } = OperationMode.Copy;
 
         public int ValidateAndPrompt()
         {
-            if (string.IsNullOrEmpty(SrcPath) || string.IsNullOrEmpty(DstPath))
+            if (string.IsNullOrEmpty(OwnerSurname) || string.IsNullOrEmpty(SrcPath) || string.IsNullOrEmpty(DstPath))
             {
-                Logger.LogError("Source and destination path can't be empty.");
+                Logger.LogError("Requred fields can't be empty.");
                 return (int)EnviromentExitCodes.ExitCodes.Error;
             }
 

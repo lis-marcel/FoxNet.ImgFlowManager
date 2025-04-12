@@ -11,15 +11,34 @@ class Program
         var cmdOptions = new CmdOptions();
 
         Parser.Default.ParseArguments<CmdOptions>(args)
-            .WithParsed(options => cmdOptions = options)
-            .WithNotParsed(errors => Logger.LogError("Invalid arguments provided."));
+            .WithParsed(options => cmdOptions = options);
 
-        if (cmdOptions.ValidateAndPrompt() == (int)EnviromentExitCodes.ExitCodes.Error)
+        var paramsValidation = cmdOptions.ValidateAndPrompt();
+
+        // Exit application if no params were provided
+        if (paramsValidation != (int)EnviromentExitCodes.ExitCodes.Succcess)
         {
-            Environment.ExitCode = (int)EnviromentExitCodes.ExitCodes.Error;
+            Environment.Exit((int)EnviromentExitCodes.ExitCodes.Error);
         }
 
-        var serviceProvider = new ServiceCollection()
+        var serviceProvider = SetupServices(cmdOptions);
+
+        var imageProcessor = serviceProvider.GetService<ImageProcessor>();
+
+        // Set paths from command options
+        imageProcessor!.SrcPath = cmdOptions.SrcPath;
+        imageProcessor.DstRootPath = cmdOptions.DstPath;
+
+        PrintSetupSummary(cmdOptions);
+
+        var exitCode = Task.Run(async () => await imageProcessor!.Run()).GetAwaiter().GetResult();
+
+        ExitWithCode(exitCode);
+    }
+
+    private static ServiceProvider SetupServices(CmdOptions cmdOptions)
+    {
+        return new ServiceCollection()
             .AddSingleton<FileHandler>()
             .AddSingleton<GeolocationService>()
             .AddSingleton<LocationCache>()
@@ -29,17 +48,31 @@ class Program
                 cmdOptions.Mode == OperationMode.Copy ? OperationMode.Copy : OperationMode.Move
             ))
             .BuildServiceProvider();
+    }
 
-        var imageProcessor = serviceProvider.GetService<ImageProcessor>();
-
-        // Set paths from command options
-        imageProcessor!.SrcPath = cmdOptions.SrcPath;
-        imageProcessor.DstRootPath = cmdOptions.DstPath;
-
+    private static void PrintSetupSummary(CmdOptions cmdOptions)
+    {
         Logger.LogInfo($"Processing images from: {cmdOptions.SrcPath}");
         Logger.LogInfo($"Destination path: {cmdOptions.DstPath}");
         Logger.LogInfo($"Operation mode: {cmdOptions.Mode}");
+    }
 
-        Task.Run(async () => await imageProcessor!.Run()).GetAwaiter().GetResult();
+    private static void ExitWithCode(int exitCode)
+    {
+        if (exitCode == (int)EnviromentExitCodes.ExitCodes.Succcess)
+        {
+            Logger.LogSuccess("Processing completed successfully.");
+            Environment.Exit((int)EnviromentExitCodes.ExitCodes.Succcess);
+        }
+        else if (exitCode == (int)EnviromentExitCodes.ExitCodes.Warninig)
+        {
+            Logger.LogError("An error occurred during processing.");
+            Environment.Exit((int)EnviromentExitCodes.ExitCodes.Warninig);
+        }
+        else
+        {
+            Logger.LogError("An error occurred during processing.");
+            Environment.Exit((int)EnviromentExitCodes.ExitCodes.Error);
+        }
     }
 }

@@ -27,22 +27,13 @@ namespace FoxSky.Img.FileProcessors
 
         public async Task<int> Run()
         {
-            if (!Directory.Exists(SrcPath) || !Directory.Exists(DstRootPath)) 
+            if (!Directory.Exists(SrcPath) && !Directory.Exists(DstRootPath)) 
             {
                 Logger.LogError("Given src or dst path doesn't exist!");
                 return (int)EnviromentExitCodes.ExitCodes.Error;
             }
 
-            if (File.Exists(SrcPath))
-            {
-                return await fileHandler.ProcessImageFile(SrcPath, this);
-            }
-            else if (Directory.Exists(SrcPath))
-            {
-                return await fileHandler.ProcessDirectory(SrcPath, this);
-            }
-
-            return (int)EnviromentExitCodes.ExitCodes.Succcess;
+            return await fileHandler.ProcessDirectory(this);
         }
     }
 }
