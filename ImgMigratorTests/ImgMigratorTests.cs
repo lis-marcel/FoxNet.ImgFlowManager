@@ -142,46 +142,5 @@ namespace ImgMigratorTests
             // Exception is expected, handled by ExpectedException attribute
             Assert.AreEqual((int)EnviromentExitCodes.ExitCodes.Error, result);
         }
-
-        // Geolocation tests are commented out as they require external service
-        //[TestMethod]
-        //public async Task GeolocationFlag_When_Enabled_Should_Include_Location_In_Filename()
-        //{
-        //    // Arrange
-        //    var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, Mode.Copy)
-        //    {
-        //        DstRootPath = DST_FILE_PATH,
-        //        OwnerSurname = "Test",
-        //        GeolocationFlag = true,
-        //        UserEmail = "test@example.com",
-        //        Radius = "100"
-        //    };
-
-        //    // Act
-        //    var result = await _fileHandler.ProcessImageFile(FILE_1, imageProcessor);
-
-        //    // Assert
-        //    Assert.IsTrue(result, "Processing with geolocation flag should succeed");
-        //}
-
-        //[TestMethod]
-        //public async Task GeolocationFlag_When_Disabled_Should_Not_Include_Location_In_Filename()
-        //{
-        //    // Arrange
-        //    var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, Mode.Copy)
-        //    {
-        //        DstRootPath = DST_FILE_PATH,
-        //        OwnerSurname = "Test",
-        //        GeolocationFlag = false
-        //    };
-
-        //    // Act
-        //    var result = await _fileHandler.ProcessImageFile(FILE_1, imageProcessor);
-
-        //    // Assert
-        //    Assert.IsTrue(result, "Processing without geolocation flag should succeed");
-        //    Assert.IsTrue(File.Exists(Path.Combine(DST_FILE_PATH, @"2019\Test_2019-02-18 16-11-33.jpg")),
-        //        "Filename should not include location data");
-        //}
     }
 }
