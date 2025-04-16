@@ -8,32 +8,32 @@ namespace FoxSky.Img.FileProcessors
         private readonly FileHandler fileHandler;
         private readonly GeolocationService geolocationService;
 
-        public string? PicsOwnerSurname { get; set; }
+        #region Public Fields
+        public string? OwnerSurname { get; set; }
         public string? SrcPath { get; set; }
         public string? DstRootPath { get; set; }
         public bool GeolocationFlag { get; set; }
         public string? UserEmail { get; set; }
         public string? Radius { get; set; }
-        public Mode Mode { get; set; }
+        public OperationMode Mode { get; set; }
+        #endregion
 
-        public ImageProcessor(FileHandler fileHandler, GeolocationService geolocationService, Mode mode)
+        public ImageProcessor(FileHandler fileHandler, GeolocationService geolocationService, OperationMode mode)
         {
             this.fileHandler = fileHandler;
             this.geolocationService = geolocationService;
             Mode = mode;
         }
 
-        public async Task<bool> ProcessImages()
+        public async Task<int> Run()
         {
-            if (File.Exists(SrcPath))
-                return await fileHandler.ProcessImageFile(SrcPath, this);
-            else if (System.IO.Directory.Exists(SrcPath))
-                return await fileHandler.ProcessDirectory(SrcPath, this);
-            else
+            if (!Directory.Exists(SrcPath) && !Directory.Exists(DstRootPath)) 
             {
-                Logger.LogError($"{SrcPath} is not a valid file or directory.");
-                return false;
+                Logger.LogError("Given src or dst path doesn't exist!");
+                return (int)EnviromentExitCodes.ExitCodes.Error;
             }
+
+            return await fileHandler.ProcessDirectory(this);
         }
     }
 }

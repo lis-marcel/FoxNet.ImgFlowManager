@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="CommandLineParser" Version="2.9.1" />
     <PackageReference Include="Geocoding.Google" Version="4.0.1" />
     <PackageReference Include="Google.Api.Gax" Version="4.10.0" />
     <PackageReference Include="GoogleApi" Version="5.8.4" />
