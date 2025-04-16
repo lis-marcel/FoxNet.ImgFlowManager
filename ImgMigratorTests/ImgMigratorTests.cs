@@ -77,7 +77,7 @@ namespace ImgMigratorTests
             {
                 SrcPath = CORRECT_INPUT_FILE_PATH,
                 DstRootPath = DST_FILE_PATH,
-                PicsOwnerSurname = "Test"
+                OwnerSurname = "Test"
             };
 
             // Act
@@ -112,7 +112,7 @@ namespace ImgMigratorTests
             {
                 SrcPath = CORRECT_INPUT_FILE_PATH,
                 DstRootPath = DST_FILE_PATH,
-                PicsOwnerSurname = "Test",
+                OwnerSurname = "Test",
                 Mode = OperationMode.Copy,
             };
 
@@ -131,7 +131,7 @@ namespace ImgMigratorTests
             {
                 SrcPath = INCORRECT_INPUT_FILE_PATH,
                 DstRootPath = DST_FILE_PATH,
-                PicsOwnerSurname = "Test",
+                OwnerSurname = "Test",
                 Mode = OperationMode.Copy,
             };
 
@@ -151,7 +151,7 @@ namespace ImgMigratorTests
         //    var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, Mode.Copy)
         //    {
         //        DstRootPath = DST_FILE_PATH,
-        //        PicsOwnerSurname = "Test",
+        //        OwnerSurname = "Test",
         //        GeolocationFlag = true,
         //        UserEmail = "test@example.com",
         //        Radius = "100"
@@ -171,7 +171,7 @@ namespace ImgMigratorTests
         //    var imageProcessor = new ImageProcessor(_fileHandler, _geolocationService, Mode.Copy)
         //    {
         //        DstRootPath = DST_FILE_PATH,
-        //        PicsOwnerSurname = "Test",
+        //        OwnerSurname = "Test",
         //        GeolocationFlag = false
         //    };
 

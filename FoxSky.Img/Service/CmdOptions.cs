@@ -24,6 +24,15 @@ namespace FoxSky.Img.Service
         [Option('m', "mode", Required = false, HelpText = "Select operation mode: Copy or Move. Copy is set as primary mode.")]
         public OperationMode Mode { get; set; } = OperationMode.Copy;
 
+        [Option('g', "geolocation",/* Required = true,*/ HelpText = "Enable including geolocation in new file name.")]
+        public bool GeolocationFlag { get; set; } = false;
+
+        [Option('e', "email", Required = false, HelpText = "OSM user email address.")]
+        public string UserEmail { get; set; } = string.Empty;
+
+        [Option('r', "radius", Required = false, HelpText = "Search radius in meters.")]
+        public string Radius { get; set; }
+
         public int ValidateAndPrompt()
         {
             if (string.IsNullOrEmpty(OwnerSurname) || string.IsNullOrEmpty(SrcPath) || string.IsNullOrEmpty(DstPath))

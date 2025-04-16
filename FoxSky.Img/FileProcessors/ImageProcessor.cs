@@ -9,7 +9,7 @@ namespace FoxSky.Img.FileProcessors
         private readonly GeolocationService geolocationService;
 
         #region Public Fields
-        public string? PicsOwnerSurname { get; set; }
+        public string? OwnerSurname { get; set; }
         public string? SrcPath { get; set; }
         public string? DstRootPath { get; set; }
         public bool GeolocationFlag { get; set; }

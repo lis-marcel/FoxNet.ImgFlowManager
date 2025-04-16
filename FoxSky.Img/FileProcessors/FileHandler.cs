@@ -130,7 +130,7 @@ namespace FoxSky.Img.FileProcessors
                 location = TextUtils.RemoveSpaces(await geolocationService.ReverseGeolocationRequestTask(srcFileName, processor.UserEmail!, processor.Radius!));
             }
 
-            sb.Append(processor.PicsOwnerSurname);
+            sb.Append(processor.OwnerSurname);
             sb.Append('_');
             sb.Append(photoDate.HasValue ?
                 photoDate.Value.ToString("yyyy-MM-dd HH-mm-ss") + location :

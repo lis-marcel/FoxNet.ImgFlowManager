@@ -2,7 +2,7 @@
   "profiles": {
     "FoxSky.Img": {
       "commandName": "Project",
-      "commandLineArgs": "-o Lis -s C:\\temp\\in.jpg -d C:\\temp\\out"
+      "commandLineArgs": "-o Owner -s C:\\temp\\in -d C:\\temp\\out"
     }
   }
 }

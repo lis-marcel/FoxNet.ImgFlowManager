@@ -25,10 +25,6 @@ class Program
 
         var imageProcessor = serviceProvider.GetService<ImageProcessor>();
 
-        // Set paths from command options
-        imageProcessor!.SrcPath = cmdOptions.SrcPath;
-        imageProcessor.DstRootPath = cmdOptions.DstPath;
-
         PrintSetupSummary(cmdOptions);
 
         var exitCode = Task.Run(async () => await imageProcessor!.Run()).GetAwaiter().GetResult();
@@ -42,13 +38,29 @@ class Program
             .AddSingleton<FileHandler>()
             .AddSingleton<GeolocationService>()
             .AddSingleton<LocationCache>()
-            .AddSingleton<ImageProcessor>(provider => new ImageProcessor(
-                provider.GetRequiredService<FileHandler>(),
-                provider.GetRequiredService<GeolocationService>(),
-                cmdOptions.Mode == OperationMode.Copy ? OperationMode.Copy : OperationMode.Move
-            ))
+            .AddSingleton<ImageProcessor>(provider => {
+                var processor = new ImageProcessor(
+                    provider.GetRequiredService<FileHandler>(),
+                    provider.GetRequiredService<GeolocationService>(),
+                    cmdOptions.Mode == OperationMode.Copy ? OperationMode.Copy : OperationMode.Move
+                )
+                {
+                    // Set all required properties
+                    SrcPath = cmdOptions.SrcPath,
+                    DstRootPath = cmdOptions.DstPath,
+                    OwnerSurname = cmdOptions.OwnerSurname,
+
+                    // TODO: implement including geolocation
+                    GeolocationFlag = cmdOptions.GeolocationFlag, // Add this flag to CmdOptions
+                    UserEmail = cmdOptions.UserEmail,             // Add this to CmdOptions if needed
+                    Radius = cmdOptions.Radius                   // Add this to CmdOptions if needed
+                };
+
+                return processor;
+            })
             .BuildServiceProvider();
     }
+
 
     private static void PrintSetupSummary(CmdOptions cmdOptions)
     {
