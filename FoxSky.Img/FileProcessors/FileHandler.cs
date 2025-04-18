@@ -106,18 +106,29 @@ namespace FoxSky.Img.FileProcessors
             }
         }
 
-        private static string PrepareDstDir(DateTime? photoDate, string dstRootPath)
+        private static string PrepareDstDir(DateTime? photoDate, string dstBasePath)
         {
-            var dstRoot = photoDate.HasValue ?
-                Path.Combine(dstRootPath, photoDate.Value.Year.ToString()) :
-                dstRootPath;
+            var dstYearDirectory = photoDate.HasValue ?
+                Path.Combine(dstBasePath, photoDate.Value.Year.ToString()) :
+                dstBasePath;
 
-            if (!System.IO.Directory.Exists(dstRoot))
+            var dstUnclassifiedDirectory = !photoDate.HasValue ?
+                Path.Combine(dstBasePath, "unclassified") :
+                dstBasePath;
+
+            if (!photoDate.HasValue || !System.IO.Directory.Exists(dstUnclassifiedDirectory))
             {
-                System.IO.Directory.CreateDirectory(dstRoot);
+                System.IO.Directory.CreateDirectory(dstUnclassifiedDirectory);
+
+                return dstUnclassifiedDirectory;
             }
 
-            return dstRoot;
+            if (!System.IO.Directory.Exists(dstYearDirectory))
+            {
+                System.IO.Directory.CreateDirectory(dstYearDirectory);
+            }
+            
+            return dstYearDirectory;
         }
 
         private async Task<string> PrepareNewFileName(string srcFileName, string dstPath, DateTime? photoDate, ImageProcessor processor)
