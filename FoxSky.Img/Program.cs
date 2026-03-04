@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 class Program
 {
-    static void Main(string[] args)
+    static void Ma in(string[] args)
     {
         var cmdOptions = new CmdOptions();
 
