@@ -16,4 +16,5 @@ WORKDIR /FoxSky.Img
 VOLUME src
 VOLUME dst
 COPY --from=build-env /FoxSky.Img/out .
-ENTRYPOINT ["dotnet", "FoxSky.Img.dll", "Lis", "/src", "/dst", "Move", "lis.marc@gmail.com", "50"]
+ENTRYPOINT ["dotnet", "FoxSky.Img.dll", "-o Lis", "-s /src", "-d /dst", "Move", "lis.marc@gmail.com", "50"]
+
