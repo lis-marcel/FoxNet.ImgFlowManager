@@ -2,12 +2,16 @@
 using FoxSky.Img.FileProcessors;
 using FoxSky.Img.Service;
 using FoxSky.Img.Utilities;
+using Geocoding;
 using Microsoft.Extensions.DependencyInjection;
 
 class Program
 {
     static void Main(string[] args)
     {
+        Console.WriteLine("Params ");
+        args.ForEach(p => Console.WriteLine(p));
+
         var cmdOptions = new CmdOptions();
 
         Parser.Default.ParseArguments<CmdOptions>(args)
